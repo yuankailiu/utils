@@ -60,8 +60,9 @@ def cmdLineParse():
     '''
     Command line parser.
     '''
-
-    parser = argparse.ArgumentParser( description='report sentinel-1 product processing software info')
+    description = 'Updated version Dec 2020 by Ollie:\n \
+        Report sentinel-1 product processing software info'
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-dir', dest='dir', type=str, required=True,
             help = 'directory containing the "S1*_IW_SLC_*.zip" files')
     parser.add_argument('-xml', dest='xml', type=str, required=True,
@@ -84,6 +85,8 @@ if __name__ == '__main__':
 
     inps = cmdLineParse()
 
+    print('Pairing Sentinel-1 SLC files under'.format(os.path.abspath(inps.dir)))
+
     group = get_group(inps.dir)
     #read standard configurations
     tree = ET.parse(inps.xml)
@@ -95,16 +98,16 @@ if __name__ == '__main__':
     pairs2 = []
     for i in range(ngroup):
         fields = group[i][0].split('_')
-        # mdate = fields[-5][2:8] # YYMMDD format
-        mdate = fields[-5][0:8] # YYYYMMDD format
+        mdate = fields[-5][2:8] # YYMMDD format
+        # mdate = fields[-5][0:8] # YYYYMMDD format
         mtime = datetime.datetime.strptime(fields[-5], datefmt)
         for j in range(i+1, i+inps.num+1):
             if j > ngroup - 1:
                 continue
 
             fields = group[j][0].split('_')
-            # sdate = fields[-5][2:8]
-            sdate = fields[-5][0:8]
+            sdate = fields[-5][2:8] # YYMMDD format
+            #sdate = fields[-5][0:8] # YYYYMMDD format
             stime = datetime.datetime.strptime(fields[-5], datefmt)
             ms = mdate + '-' + sdate
             

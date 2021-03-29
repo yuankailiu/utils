@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-#Cunren Liang, 22-MAR-2018
+# Cunren Liang, 22-MAR-2018
+# Updated by Cunren Liang, DEC-2020
+# Modified by Ollie, Jan 2021
 
 import os
 import sys
@@ -63,7 +65,7 @@ def check_verion(group):
 
     ngroup = len(group)
     nslice = 0
-    # Added by Ollie, Jan 2020, to get number of silces for each acquisition
+    # Added by Ollie, Jan 2021, to get number of silces for each acquisition
     date_list = []
     group_slice_num = []
     for x in group:
@@ -163,7 +165,7 @@ def check_verion(group):
         print()
         print('The following are not openable as zip files and should be removed: {}'.format(remove_list))
     else: 
-        with open('slice_log.txt','w') as f:
+        with open('s1_slice.txt','w+') as f:
             
             # Sort based on the number of slices for each date
             sorted_list = sorted(zip(date_list,group_slice_num),key=lambda pair: pair[1])
@@ -251,8 +253,11 @@ def cmdLineParse():
     '''
     Command line parser.
     '''
-
-    parser = argparse.ArgumentParser( description='report sentinel-1 product processing software info')
+    description = 'Updated version Jan 2021 by Ollie:\n \
+        1. Report sentinel-1 product processing software info\n \
+            (redirect to a file using > s1_version.txt manually)\n \
+        2. Report number of slices to s1_slice.txt file'
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-dir', dest='dir', type=str, required=True,
             help = 'directory containing the "S1*_IW_SLC_*.zip" files')
 
@@ -267,12 +272,22 @@ def cmdLineParse():
 if __name__ == '__main__':
 
     inps = cmdLineParse()
+    print('Checking Sentinel-1 SLC files under {}\n \
+        checking for gaps and versions in each slice...'.format(os.path.abspath(inps.dir)))
+
+    orig_stdout = sys.stdout
+    sys.stdout=open("s1_version.txt","w+")
 
     group = get_group(inps.dir)
     check_verion(group)
     check_gap(group)
     check_redundancy(group, threshold=1)
 
+    sys.stdout.close()
+    sys.stdout = orig_stdout
+
+    print('Version check saved to ./s1_version.txt')
+    print('Slices num report saved ./to s1_slice.txt')
 
 
 

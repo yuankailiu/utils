@@ -8,8 +8,11 @@
 #   IGS TEC I/O
 #   Test
 # Recommend usage:
-#   from *module*.simulation import iono
-
+#   from *module*.simulation import ionotec
+# Modified by ykliu at Apr 8 2021: 
+#   script filename changed to ionotec.py
+#   gzip: option '--keep' is only for GNU gzip 1.6 or above; use '--stout' to work around
+#   add back function 'igs_iono_ramp_timeseries()'
 
 import os
 import sys
@@ -21,7 +24,8 @@ import matplotlib.pyplot as plt
 import urllib.request
 from scipy import interpolate
 
-from mintpy.utils import readfile, utils as ut
+from mintpy.objects import timeseries
+from mintpy.utils import ptime, readfile, writefile, utils as ut
 
 
 # global variables
@@ -184,7 +188,8 @@ def calc_igs_iono_ramp(tec_dir, date_str, geom_file, box=None, print_msg=True):
     (iono_inc_angle,
      iono_lat,
      iono_lon) = prep_geometry_iono_shell_along_los(geom_file, box=box,
-                                                    iono_height=iono_height)[:3]
+                                                    iono_height=iono_height,
+                                                    print_msg=print_msg)[:3]
 
     # time
     meta = readfile.read_attribute(geom_file)
@@ -198,6 +203,70 @@ def calc_igs_iono_ramp(tec_dir, date_str, geom_file, box=None, print_msg=True):
     rang_delay = vtec2range_delay(vtec, iono_inc_angle, freq)
 
     return rang_delay, vtec, iono_lat, iono_lon, iono_height, iono_inc_angle
+
+
+def igs_iono_ramp_timeseries(tec_dir, out_file, geom_file, ref_ts_file):
+    """Get the time-series of 2D ionospheric delay from IGS TEC data.
+    due to the variation of the incidence angle along LOS.
+
+    Parameters: tec_dir     - str, path of the local TEC directory
+                out_file    - str, path of output time-series file
+                geom_file   - str, path of the geometry file including incidenceAngle data
+                ref_ts_file - str, path of the reference time-series file
+    Returns:    ts_file     - 2D np.ndarray for the phase in meters
+    """
+    # get info
+    ts_obj = timeseries(ref_ts_file)
+    ts_obj.open(print_msg=False)
+    date_list = ts_obj.dateList
+    num_date = ts_obj.numDate
+    length = ts_obj.length
+    width = ts_obj.width
+    meta = dict(ts_obj.metadata)
+
+    # calculate
+    print('calculating ionospheric phase ramp time-series ...')
+    ts_ramp = np.zeros((num_date, length, width), dtype=np.float32)
+    ts_vtec = np.zeros(num_date, dtype=np.float32)
+
+    prog_bar = ptime.progressBar(maxValue=num_date)
+    for i in range(num_date):
+        (rg_delay, 
+         vtec,
+         iono_lat,
+         iono_lon, 
+         iono_height,
+         iono_inc_angle) = calc_igs_iono_ramp(tec_dir,
+                                             date_list[i],
+                                             geom_file,
+                                             print_msg=False)
+        ts_ramp[i,:,:] = rg_delay
+        ts_vtec[i] = vtec
+        prog_bar.update(i+1, suffix=date_list[i])
+    prog_bar.close()
+
+    ## output
+    # prepare metadata
+    meta['FILE_TYPE'] = 'timeseries'
+    meta['UNIT'] = 'm'
+    meta['IONO_LAT'] = iono_lat
+    meta['IONO_LON'] = iono_lon
+    meta['IONO_HEIGHT'] = iono_height
+    meta['IONO_INCIDENCE_ANGLE'] = np.nanmean(iono_inc_angle)
+    # absolute delay without double reference
+    for key in ['REF_X','REF_Y','REF_LAT','REF_LON','REF_DATE']:
+        if key in meta.keys():
+            meta.pop(key)
+
+    # prepare data matrix
+    dsDict = {}
+    dsDict['timeseries'] = ts_ramp
+    dsDict['vtec'] = ts_vtec
+
+    # write to disk
+    writefile.write(dsDict, out_file, metadata=meta, ref_file=ref_ts_file)
+
+    return out_file
 
 
 def get_igs_tec_value(tec_file, utc_hour, lat, lon):
@@ -266,7 +335,8 @@ def dload_igs_tec(d, out_dir, datefmt='%Y%m%d', print_msg=False):
     if (not os.path.isfile(fname_dst_uncomp)
             or os.path.getsize(fname_dst_uncomp) < 600e3
             or os.path.getmtime(fname_dst_uncomp) < os.path.getmtime(fname_dst)):
-        cmd = "gzip --force --keep --decompress {}".format(fname_dst)
+        #cmd = "gzip --force --keep --decompress {}".format(fname_dst)
+        cmd = "gzip --force --decompress --stdout {} > {}".format(fname_dst, fname_dst_uncomp)        
         if print_msg:
             print(cmd)
         os.system(cmd)

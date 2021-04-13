@@ -90,8 +90,10 @@ def cmdLineParse():
             help = 'number of pairs for each acquistion. default: 2')
     parser.add_argument('-yr', dest='yr', type=float, default=1.0,
             help = 'time span threshhold. default: 1.0 year')
+    parser.add_argument('-skip', dest='skip', type=int, default=0,
+            help = 'skip-pairing scheme; skip num of nearest acquistions (disregard -num). default: 0')            
     parser.add_argument('-pairtxt', dest='pairtxt', type=str, default=None,
-            help = 'Pairs list text file (disregard -num and -yr). default: None')
+            help = 'text file contains the list of pairs (disregard -num and -yr). default: None')
 
 
     if len(sys.argv) <= 1:
@@ -163,13 +165,17 @@ if __name__ == '__main__':
             tree.write(os.path.join(ms, 'secondary.xml'))
 
     else:
-        print('Pairing based on -num and -yr: ')
+        if inps.skip == 0:
+            print('Pairing based on -num and -yr')
+        elif inps.skip > 0:
+            inps.num = int(1)
+            print('Pairing based on -skip and -yr, skip-{} pairing scheme'.format(inps.skip))
         for i in range(ngroup):
             fields = group[i][0].split('_')
             mdate = fields[-5][2:8] # YYMMDD format
             # mdate = fields[-5][0:8] # YYYYMMDD format
             mtime = datetime.datetime.strptime(fields[-5], datefmt)
-            for j in range(i+1, i+inps.num+1):
+            for j in range(i+1+inps.skip, i+inps.num+1+inps.skip):
                 if j > ngroup - 1:
                     continue
 

@@ -7,10 +7,27 @@ This is a note and list of usefull things when running isce2 topsApp on the Calt
   - Short reports of processing speed and data transfering speed over HPC
   - Fee
 
-## Install isce2 on HPC:
 
-Reference of the installation guide is from:
-- 
+
+## ISCE2 related links
+
+Participate in discussions with the users/developers community!
+
+- [JPL/ISCE2 GitHub repo](https://github.com/isce-framework/isce2)
+- [ISCE Forum on Caltech Earthdef](http://earthdef.caltech.edu/projects/isce_forum/boards): May need login credentials based on a request to the admin
+
+<br/>
+
+## Reference of "the Experts"
+
+- @[yunjunz](https://github.com/yunjunz)'s guidance: <https://github.com/yunjunz/conda_envs>
+- @[lijun99](https://github.com/lijun99)'s guidance: <https://github.com/lijun99/isce2-install#linux-with-anaconda3--cmake>
+- @[CunrenLiang](https://github.com/CunrenLiang)'s repo: https://github.com/CunrenLiang/isce2
+- ISCE on KAMB wiki: <https://geo.caltech.edu/doku.php?id=local:insar:iscep-on-kamb> (May need login credentials based on a request to the admin)
+
+<br/>
+
+## Install isce2 on HPC:
 
 ```bash
 # use tools directory to save files
@@ -78,6 +95,8 @@ export PATH=${PATH}:${ISCE_ROOT}/install/bin
 export PYTHONPATH=${PYTHONPATH}:${ISCE_ROOT}/install/packages
 export PYTHONPATH=${PYTHONPATH}:${CONDA_PREFIX}/bin
 ```
+
+
 
 ## File transferring from KAMB to HPC
 
@@ -392,7 +411,7 @@ sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00
 
 <br>
 ## Personal notes:
-### Check isce output, how many threads are actually used
+#### Check isce output, how many threads are actually used
 
 ```bash
 

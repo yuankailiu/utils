@@ -287,7 +287,7 @@ if __name__ == '__main__':
     sys.stdout = orig_stdout
 
     print('Version check saved to ./s1_version.txt')
-    print('Slices num report saved ./to s1_slice.txt')
+    print('Slices num report saved to ./s1_slice.txt')
 
 
 

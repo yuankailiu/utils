@@ -6,6 +6,8 @@
 # Still using sdate and mdate variables
 # Modified by YKL, 12-Apr-2021
 #   add optional function: user defined pairing list from a text file
+# Modified by OLS, 10-May-2021
+#   add optional pairing above minimum temporal threshold (e.g. form pairs with a baseline above half a year)
 
 import os
 import sys
@@ -16,12 +18,12 @@ import datetime
 import numpy as np
 import xml.etree.ElementTree as ET
 
-
 def get_group(dir0):
     '''
-    this routine group the slices
+    this routine groups the SLC slices
     each group is an acquisition
     the returned result is a list containing a number of lists (groups/acquistions)
+    the list is orderd by acquisition date
     this routine has no problem with same slice having different versions
     '''
     #sort by starting time
@@ -49,7 +51,7 @@ def get_group(dir0):
             group.append(group0)
             #create new group
             tbef0 = tbef
-            group0 = []
+            group0= []
             group0.append(zips[i])
 
         if i == nzips - 1:
@@ -63,16 +65,34 @@ def findslice(date, group):
     this routine finds the index of the group that contains a certain date string
     '''
     if len(date) != 8:
-        print('Input date of findslice() should be YYYYMMDD format!')
-        return np.nan
+        raise Exception('Input date of findslice() should be YYYYMMDD format! ({})'.format(date))
     datestr = '_'+date+'T'
     for i in range(len(group)):
         if any(datestr in slc for slc in group[i]):
             #print(group[i])
             return i
-    print('No such date {}'.format(date))
-    return np.nan    
+    raise Exception('No such date {}'.format(date))
 
+def make_pair(ms,group1,group2,tree,root):
+        ''' Make xml files for a given pair of dates '''
+
+        #reference xml
+        root.set('name', 'reference')
+        safe = root.find("property[@name='safe']")
+        safe.text = '{}'.format(group1)
+        safe = root.find("property[@name='output directory']")
+        safe.text = 'referencedir'
+        tree.write(os.path.join(ms, 'reference.xml'))
+
+        #secondary xml
+        root.set('name', 'secondary')
+        safe = root.find("property[@name='safe']")
+        safe.text = '{}'.format(group2)
+        safe = root.find("property[@name='output directory']")
+        safe.text = 'secondarydir'
+        tree.write(os.path.join(ms, 'secondary.xml'))
+        
+        return
 
 def cmdLineParse():
     '''
@@ -90,10 +110,12 @@ def cmdLineParse():
             help = 'number of pairs for each acquistion. default: 2')
     parser.add_argument('-yr', dest='yr', type=float, default=1.0,
             help = 'time span threshhold. default: 1.0 year')
-    parser.add_argument('-skip', dest='skip', type=int, default=0,
+    parser.add_argument('-skip_aqns', dest='skip_aqns', type=int, default=0,
             help = 'skip-pairing scheme; skip num of nearest acquistions (disregard -num). default: 0')            
+    parser.add_argument('-skip_time', dest='skip_time', type=float, default=0,
+            help = 'skip-pairing scheme; skip amount of time (in yrs) between pairs (disregard -skip_aqns). default: 0')            
     parser.add_argument('-pairtxt', dest='pairtxt', type=str, default=None,
-            help = 'text file contains the list of pairs (disregard -num and -yr). default: None')
+            help = 'text file contains the list of pairs (disregard -num, -yr, -skip variables). default: None')
 
 
     if len(sys.argv) <= 1:
@@ -116,72 +138,114 @@ if __name__ == '__main__':
     root = tree.getroot()
 
     datefmt = "%Y%m%dT%H%M%S"
-    ngroup = len(group)
+    ngroup = len(group) # number of SLC dates
     pairs = []
     pairs2 = []
 
+    # If we have a file with a list of pairs, use that
     if inps.pairtxt is not None:
         print('Pairing based on user defined -pairtxt: {}'.format(os.path.abspath(inps.pairtxt)))
-        print('Disregard -num and -yr criteria')
+        print('Disregard -num, -yr and -skip criteria')
         with open(inps.pairtxt) as f:
             date12 = f.read().splitlines()
         for i in range(len(date12)):
-            udr  = '20'+date12[i].split('-')[0]
-            uds  = '20'+date12[i].split('-')[1]
+            # udr  = '20'+date12[i].split('-')[0]
+            # uds  = '20'+date12[i].split('-')[1]
+            udr  = date12[i].split('-')[0]
+            uds  = date12[i].split('-')[1]
+            
             udri = findslice(udr, group)
             udsi = findslice(uds, group)
 
             fields = group[udri][0].split('_')
-            mdate = fields[-5][2:8] # YYMMDD format
-            # mdate = fields[-5][0:8] # YYYYMMDD format
+            # mdate = fields[-5][2:8] # YYMMDD format
+            mdate = fields[-5][0:8] # YYYYMMDD format
             mtime = datetime.datetime.strptime(fields[-5], datefmt)
 
             fields = group[udsi][0].split('_')
-            sdate = fields[-5][2:8] # YYMMDD format
-            #sdate = fields[-5][0:8] # YYYYMMDD format
+            # sdate = fields[-5][2:8] # YYMMDD format
+            sdate = fields[-5][0:8] # YYYYMMDD format
             stime = datetime.datetime.strptime(fields[-5], datefmt)
             ms = mdate + '-' + sdate
 
             if not os.path.exists(ms):
                 os.mkdir(ms)
                 pairs.append(ms)
+                make_pair(ms,group[udri],group[udsi],tree,root)
             else:
                 print('Skip creating existing pair directory {}'.format(ms))
 
-            #reference xml
-            root.set('name', 'reference')
-            safe = root.find("property[@name='safe']")
-            safe.text = '{}'.format(group[udri])
-            safe = root.find("property[@name='output directory']")
-            safe.text = 'referencedir'
-            tree.write(os.path.join(ms, 'reference.xml'))
+    # If we're doing skip_time
+    elif inps.skip_time > 0:
+        
+        print('Pairing based on -skip_time and -yr, skip {} yr pairing scheme'.format(inps.skip_time))
+        
+        if inps.skip_aqns != 0:
+            print('Ignoring skip_aqns')
+            inps.skip_aqns=0 # Ignore the skip_aqns variable
 
-            #secondary xml
-            root.set('name', 'secondary')
-            safe = root.find("property[@name='safe']")
-            safe.text = '{}'.format(group[udsi])
-            safe = root.find("property[@name='output directory']")
-            safe.text = 'secondarydir'
-            tree.write(os.path.join(ms, 'secondary.xml'))
-
-    else:
-        if inps.skip == 0:
-            print('Pairing based on -num and -yr')
-        elif inps.skip > 0:
-            inps.num = int(1)
-            print('Pairing based on -skip and -yr, skip-{} pairing scheme'.format(inps.skip))
+        if inps.skip_time > inps.yr:
+            raise Exception("skip_time is larger than yr, can't make any pairs")
+        
         for i in range(ngroup):
             fields = group[i][0].split('_')
-            mdate = fields[-5][2:8] # YYMMDD format
-            # mdate = fields[-5][0:8] # YYYYMMDD format
+            # mdate = fields[-5][2:8] # YYMMDD format
+            mdate = fields[-5][0:8] # YYYYMMDD format
             mtime = datetime.datetime.strptime(fields[-5], datefmt)
-            for j in range(i+1+inps.skip, i+inps.num+1+inps.skip):
-                if j > ngroup - 1:
+            counter = 0 # count how many pairs we've made 
+            
+            # Loop over each acqusition and figure out the timespan 
+            for j in range(i+1,ngroup): 
+                if j > ngroup - 1: # Skip if we're greater than the no. of SLCs 
+                    continue
+                fields = group[j][0].split('_')
+                # sdate = fields[-5][2:8] # YYMMDD format
+                sdate = fields[-5][0:8] # YYYYMMDD format
+                stime = datetime.datetime.strptime(fields[-5], datefmt)
+                # If temporal baseline is over the skip_time threshold, make a pair
+                if np.absolute((stime - mtime).total_seconds()) > inps.skip_time * 365.0 * 24.0 * 3600:
+                    # Unless it's also over the max temporal threshold, when we make stop making pairs
+                    if np.absolute((stime - mtime).total_seconds()) > inps.yr * 365.0 * 24.0 * 3600:
+                        pairs2.append(ms)
+                        print('WARNING: time span of pair {} larger than threshhold, skip this pair...')
+                        continue
+                    ms = mdate + '-' + sdate
+                    if not os.path.exists(ms):
+                        pairs.append(ms)
+                        os.mkdir(ms)
+                        make_pair(ms,group[i],group[j],tree,root)
+                    else:
+                        print('Skip creating existing pair directory {}'.format(ms))
+                 
+                    # When the counter reaches num, stop 
+                    # Only want to make 'num' pairs 
+                    counter += 1
+                    if counter == inps.num:
+                        break
+            # When we find one over the required timespan, increment the counter 
+
+    else:
+        if inps.skip_aqns == 0 and inps.skip_time == 0:
+            print('Pairing based on -num and -yr')
+        elif inps.skip_time > 0:
+            print('Pairing based on -skip_time and -yr, skip {} yr pairing scheme'.format(inps.skip_time))
+            inps.skip_aqns=0
+        elif inps.skip_aqns > 0:
+            inps.num = int(1)
+            print('Pairing based on -skip_aqns and -yr, skip-{} pairing scheme'.format(inps.skip_aqns))
+        for i in range(ngroup):
+            fields = group[i][0].split('_')
+            # mdate = fields[-5][2:8] # YYMMDD format
+            mdate = fields[-5][0:8] # YYYYMMDD format
+            mtime = datetime.datetime.strptime(fields[-5], datefmt)
+            
+            for j in range(i+1+inps.skip_aqns, i+1+inps.skip_aqns+inps.num):
+                if j > ngroup - 1: # Skip if we're greater than the no. of SLCs 
                     continue
 
                 fields = group[j][0].split('_')
-                sdate = fields[-5][2:8] # YYMMDD format
-                #sdate = fields[-5][0:8] # YYYYMMDD format
+                # sdate = fields[-5][2:8] # YYMMDD format
+                sdate = fields[-5][0:8] # YYYYMMDD format
                 stime = datetime.datetime.strptime(fields[-5], datefmt)
                 ms = mdate + '-' + sdate
                 
@@ -189,32 +253,34 @@ if __name__ == '__main__':
                     pairs2.append(ms)
                     #print('WARNING: time span of pair {} larger than threshhold, skip this pair...')
                     continue
+                
 
-                os.mkdir(ms)
-            
-                #reference xml
-                root.set('name', 'reference')
-                safe = root.find("property[@name='safe']")
-                safe.text = '{}'.format(group[i])
-                safe = root.find("property[@name='output directory']")
-                safe.text = 'referencedir'
-                tree.write(os.path.join(ms, 'reference.xml'))
+                if not os.path.exists(ms):
+                    pairs.append(ms)
+                    os.mkdir(ms)
+                    make_pair(ms,group[i],group[j],tree,root)
+                else:
+                    print('Skip creating existing pair directory {}'.format(ms))
 
-                #secondary xml
-                root.set('name', 'secondary')
-                safe = root.find("property[@name='safe']")
-                safe.text = '{}'.format(group[j])
-                safe = root.find("property[@name='output directory']")
-                safe.text = 'secondarydir'
-                tree.write(os.path.join(ms, 'secondary.xml'))
-
-                pairs.append(ms)
-
-    print('created the following pairs:')
-    for x in pairs:
-        print('{}'.format(x))
-    #print('***************************************')
-    print('total number of pairs created: {}'.format(len(pairs)))
+    if len(pairs) == 0:
+        print('Created no pairs!')
+    else:
+        print('created the following pairs:')
+        for x in pairs:
+            print('{}'.format(x))
+        #print('***************************************')
+        print('total number of pairs created: {}'.format(len(pairs)))
+    
+    # Write to logfile 
+    filename1 = 'pair_log_{}.txt'.format(datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+    f = open(filename1,"w")
+    if len(pairs) == 0:
+        f.write('Created no pairs!')
+    else:
+        f.write('Pairs created:\n')
+        for x in pairs: 
+            f.write('{}\n'.format(x))
+    f.close()
 
 
     if len(pairs2) != 0:
@@ -224,7 +290,10 @@ if __name__ == '__main__':
             print('{}'.format(x))
         print('total number of pairs not created: {}'.format(len(pairs2)))
     else:
-        print('all possible pairs created')
+        if len(pairs) == 0:
+            pass
+        else:
+            print('all possible pairs created')
 
 
 

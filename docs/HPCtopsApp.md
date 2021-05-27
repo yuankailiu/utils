@@ -105,7 +105,7 @@ export PYTHONPATH=${PYTHONPATH}:${CONDA_PREFIX}/bin
 
 ## How many pairs can HPC run concurrently
 
-From my current experience, it can have **11 jobs** running at 11 different nodes the same time, others are just pending for nodes
+From my current experience, it can have **11–22 jobs** running at different nodes the same time, others are just pending for nodes
 
 note: each job is one pair of SLC
 
@@ -129,42 +129,6 @@ JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
 ```
 
 ## Wait time
-
-- 4 hours !? (for shorter acquisitions?)
-
-```bash
-## steps and wait time of isce2 topsApp.py
- # This is estiamted for each pair. For my first testing on 8 SLC pairs, the wait times are all similar as below
-
-## Recources for each pair: 1 node, 1 GPU, 28 CPU cores
-
-use_steps=
-('startup'                 # 0        min   ⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻|
-'preprocess'               # 3        min             |
-'computeBaselines'         # 0        min             |
-'verifyDEM'                # 0        min             |
-'topo'                     # 4        min (with GPU)  |
-'subsetoverlaps'           # 0        min             |
-'coarseoffsets'            # 0        min             |____ 14 min
-'coarseresamp'             # 0        min             |     
-'overlapifg'               # 0        min             |
-'prepesd'                  # 0        min             |
-'esd'                      # 0        min             |
-'rangecoreg'               # 0        min             |
-'fineoffsets'              # 7        min (with GPU)__|
- 
-'fineresamp'               # 30       min (resampling;           no gpu)   ⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻|
-'ion'                      # 140      min (resampling;           no gpu)                          |
-'burstifg'                 # 45       min (sing-look igram, coh; no gpu)                          |
-'mergebursts'              # 5        min                                                         |_____ ~235 min
-'filter'                   # 1        min (filter strength=0)                                     |    
-'unwrap'                   # 19       min                       (no gpu)                          |   
-'unwrap2stage'             # 0        min                                                         |
-'geocode'                  # 4        min    _____________________________________________________|
-)
-
-## Total runtime: ~4.1 hours for one pair
-```
 
 - 5.5 hours (for long acquisitions)
 
@@ -409,8 +373,14 @@ sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00
 sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00:00 end=now    -t hours account=simonsgroup
 ```
 
-<br>
-## Personal notes:
+<br \>
+
+
+
+## Supplementary:
+
+
+
 #### Check isce output, how many threads are actually used
 
 ```bash

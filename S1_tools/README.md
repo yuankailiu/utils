@@ -31,4 +31,5 @@ These codes are now put together for usage:
  rg_filter                  cunren
  getBaselines.py            kai
  saveKml.py                 ollie
+ check_runtime.py           kai
 ```

@@ -67,7 +67,7 @@ if __name__ == '__main__':
     hdr = '''<?xml version="1.0" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg width="20cm" height="20cm" version="1.1"
+<svg width="30cm" height="90cm" version="1.1"
      xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 '''
     tlr = '''
@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
 
     #images per line
-    ipl = 15
+    ipl = 20
     imgdir = 'img'
     os.mkdir(imgdir)
     files = sorted(glob.glob( os.path.join(inps.dir, '*-*', 'ion/ion_cal/filt.ion') ))
@@ -104,17 +104,20 @@ if __name__ == '__main__':
         ii = int((i + 1 - 0.1) / ipl) + 1
         jj = i + 1 - (ii - 1) * ipl
 
+        first_row_gap = 0.6
+        first_col_gap = 0.3
+
         img = '''    <image xlink:href="{}" x="{}cm" y="{}cm"/>
     <text x="{}cm" y="{}cm" style="font-family:'Times New Roman';font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:11px">{}</text>
     <text x="{}cm" y="{}cm" style="font-family:'Times New Roman';font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:11px">{}</text>
 '''.format(os.path.join(imgdir, pair + '.tiff'),
-           0+(jj-1)*1.2,
-           0+(ii-1)*3.7,
-           0+(jj-1)*1.2,
-           0+(ii-1)*3.7-0.26,
+           first_col_gap + (jj-1)*1.2,
+           first_row_gap + (ii-1)*3.8,
+           first_col_gap + (jj-1)*1.2,
+           first_row_gap + (ii-1)*3.8-0.26,
            mdate,
-           0+(jj-1)*1.2,
-           0+(ii-1)*3.7-0.03,
+           first_col_gap + (jj-1)*1.2,
+           first_row_gap + (ii-1)*3.8-0.03,
            sdate
         )
 

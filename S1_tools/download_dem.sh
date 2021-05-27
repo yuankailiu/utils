@@ -12,6 +12,7 @@ if [ $# -ne 4 ]; then
     exit 1
 fi
 
+# Need ISCE scripts in order to run
 #set these before running
 S=$1
 N=$2

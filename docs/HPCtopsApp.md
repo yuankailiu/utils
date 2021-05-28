@@ -331,10 +331,12 @@ Usage reported in TRES Hours
   central     simonsgroup     ykliu    Yuan Kai Liu       gres/gpu      2623
 ```
 Total computing units = cpu + 10 * gpu = 290246
+
 Total fee = 290246 * 0.014 = $4,063
 
 ### Rate Structure
 Latest rates: <https://www.hpc.caltech.edu/rates>
+
 Total rates are broken into compute hours and additional storage costs. Rates are based on a tiered structure. Tiers are reset every fiscal year.
 
 #### Core Hour Calculations	

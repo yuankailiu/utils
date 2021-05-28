@@ -223,18 +223,18 @@ cmds/runsteps.sh ${insarpair[pairID]}
 ## Resource usage by my account (command: `sreport`)
 
 ```bash
-## Now there are 8 paris completed processing up to geocode (my first test)
- # the other 11 pairs are in step `unwrap` and are almost done
- # So below is the usage for completing ~19 pairs of processing
-
 --------------------------------------------------------------------------------
-Cluster/Account/User Utilization 2021-04-22T00:00:00 - 2021-04-23T08:59:59 (9705600 secs)
+Cluster/Account/User Utilization 2021-01-01T00:00:00 - 2021-05-28T16:59:59 (12758400 secs)
 Usage reported in TRES Hours
 --------------------------------------------------------------------------------
-  Cluster         Account     Login     Proper Name      TRES Name     Used
---------- --------------- --------- --------------- -------------- --------
-  central     simonsgroup     ykliu    Yuan Kai Liu            cpu     2769
-  central     simonsgroup     ykliu    Yuan Kai Liu       gres/gpu       99
+  Cluster         Account     Login     Proper Name      TRES Name      Used
+--------- --------------- --------- --------------- -------------- ---------
+  central     simonsgroup                                      cpu    213866
+  central     simonsgroup                                 gres/gpu      7638
+  central     simonsgroup  olstephe Oliver L. (Oll+            cpu    140426
+  central     simonsgroup  olstephe Oliver L. (Oll+       gres/gpu      5015
+  central     simonsgroup     ykliu    Yuan Kai Liu            cpu     73440
+  central     simonsgroup     ykliu    Yuan Kai Liu       gres/gpu      2623
 ```
 
 ## Individual job information (command: `scontrol show job`)
@@ -315,6 +315,24 @@ Each pair will take 3.3 G of disk space after deleting unnecessary files
 
 
 ## Rates
+
+```
+--------------------------------------------------------------------------------
+Cluster/Account/User Utilization 2021-01-01T00:00:00 - 2021-05-28T16:59:59 (12758400 secs)
+Usage reported in TRES Hours
+--------------------------------------------------------------------------------
+  Cluster         Account     Login     Proper Name      TRES Name      Used
+--------- --------------- --------- --------------- -------------- ---------
+  central     simonsgroup                                      cpu    213866
+  central     simonsgroup                                 gres/gpu      7638
+  central     simonsgroup  olstephe Oliver L. (Oll+            cpu    140426
+  central     simonsgroup  olstephe Oliver L. (Oll+       gres/gpu      5015
+  central     simonsgroup     ykliu    Yuan Kai Liu            cpu     73440
+  central     simonsgroup     ykliu    Yuan Kai Liu       gres/gpu      2623
+```
+Total computing units = cpu + 10 * gpu = 290246
+Total fee = 290246 * 0.014 = $4,063
+
 ### Rate Structure
 Latest rates: <https://www.hpc.caltech.edu/rates>
 Total rates are broken into compute hours and additional storage costs. Rates are based on a tiered structure. Tiers are reset every fiscal year.

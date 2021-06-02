@@ -30,10 +30,10 @@ alooks=1
 
 if [ $# -ne 4 ]; then
     echo ""
-    echo "Prepare an topsApp track data for MintPy processing (Ollie -> YKL modified)"
+    echo "Prepare an topsApp track data for MintPy processing (Ollie's code, YKL modified)"
     echo "usage: `basename $0` example_pair outdir rlooks alooks"
     echo "  example_pair:   a pair for copying geometry (have *.rdr, *.vrt, *.xml) and reference (IW*.xml) files"
-    echo "  outdir:         output directory for saving files, fedualt=merged/"
+    echo "  outdir:         output directory for saving files, default=merged/"
     echo "  rlooks:         range multilook (using isce2 loosk.py), default=1"
     echo "  alooks:         azimuth multilook (using isce2 looks.py), default=1"
     echo ""
@@ -42,7 +42,7 @@ if [ $# -ne 4 ]; then
     echo ""
     echo "Note:"
     echo "  load isce2 topsStack for computing baselines"
-    echo "  load MintPy too"
+    echo "  load MintPy"
     echo ""
     exit 1
 fi
@@ -57,6 +57,15 @@ rlooks=$3
 alooks=$4
 pair_dir=$process_dir/$example_pair
 OUTDIR=$process_dir/$outdir
+
+# input paths for copying files
+refdir="referencedir"
+secdir="secondarydir"
+geodir="geom_reference"
+
+# output paths for saving files
+basedir=$OUTDIR/baselines
+ifgmdir=$OUTDIR/interferograms
 
 
 ## Ask for confirmation
@@ -73,74 +82,107 @@ then
 fi
 
 
+
+# ================= Running starting from below =======================
+
 ## Make folder for integrated data
 printf "\n>>> Create directory for saving \n"
-mkdir -p $OUTDIR/interferograms/ 
+mkdir -p $ifgmdir/ 
 
-# Copy the referencedir/ and geom_refenrece/
-cd $pair_dir
-#cp -r referencedir $OUTDIR/
-#cp -r geom_reference $OUTDIR/
-cd $OUTDIR/geom_reference && mkdir -p full && mv *.rdr *.vrt *.xml full/
-cd $pair_dir
+
+## Copy the referencedir/ and geom_refenrece/
+if false; then
+    cd $pair_dir
+    cp -r $refdir $OUTDIR/
+    cp -r $geodir $OUTDIR/
+    cd $OUTDIR/$geodir && mkdir -p full && mv *.rdr *.vrt *.xml full/
+fi
 
 
 ## Geocode LOS file
-printf "\n>>> Geocode the LOS file \n"
-#    topsApp_geocodeLOS.xml file with just the los file to geocode, the right bounding box and the right DEM 
-#topsApp.py ../example/topsApp_geocodeLOS.xml --dostep=geocode
-cd $pair_dir/merged
-
-
-## Get the geotransform from a vrt file, add the geotransform to the dem.crop.vrt
-geo_vrt_file='filt_topophase.unw.geo.vrt'
-dem_old_file='dem.crop'
-los_old_file='los.rdr.geo'
-dem_vrt_file=$dem_old_file.vrt
-
-printf "\n>>> Get geotransform from $geo_vrt_file, add to $dem_vrt_file \n"
-l1=$(sed -n '2p' $geo_vrt_file)
-l2=$(sed -n '3p' $geo_vrt_file)
-if [ `cat $dem_vrt_file | wc -l` -le "9" ]
-then
-    sed -i "2 i $l2" $dem_vrt_file   # -i does additions directly to the file
-    sed -i "2 i $l1" $dem_vrt_file 
+if false; then
+    cd $pair_dir
+    printf "\n>>> Geocode the LOS file \n"
+    # Run geocode on ['merged/los.rdr'] using topsApp_geocodeLOS.xml with the same bounding box and DEM 
+    topsApp.py ../example/topsApp_geocodeLOS.xml --dostep=geocode
 fi
 
-## GDAL translate the DEM file
-printf "\n>>> GDAL translate for $dem_old_file \n"
-gdal_translate $dem_vrt_file $dem_old_file -of ISCE
-# Change variable labels for mintpy compatibility
-sed -i 's/Coordinate1/coordinate1/'     $dem_old_file.xml
-sed -i 's/Coordinate2/coordinate2/'     $dem_old_file.xml
-sed -i 's/startingValue/startingvalue/' $dem_old_file.xml
+
+## Get the geotransform from a vrt file
+if false; then
+    cd $pair_dir/merged
+    geo_vrt_file='filt_topophase.unw.geo.vrt'
+    dem_old_file='dem.crop'
+    los_old_file='los.rdr.geo'
+    dem_vrt_file=$dem_old_file.vrt
+fi
+
+
+## Append the geotransform to the dem.crop.vrt
+if false; then
+    cd $pair_dir/merged
+    printf "\n>>> Get geotransform from $geo_vrt_file, add to $dem_vrt_file \n"
+    l1=$(sed -n '2p' $geo_vrt_file)
+    l2=$(sed -n '3p' $geo_vrt_file)
+    if [ `cat $dem_vrt_file | wc -l` -le "9" ]
+    then
+        sed -i "2 i $l2" $dem_vrt_file   # -i does additions directly to the file
+        sed -i "2 i $l1" $dem_vrt_file 
+    fi
+fi
+
+
+## GDAL translate the DEM file / change variable labels
+if false; then
+    cd $pair_dir/merged
+    printf "\n>>> GDAL translate for $dem_old_file \n"
+    gdal_translate $dem_vrt_file $dem_old_file -of ISCE
+    # Change variable labels for mintpy compatibility
+    sed -i 's/Coordinate1/coordinate1/'     $dem_old_file.xml
+    sed -i 's/Coordinate2/coordinate2/'     $dem_old_file.xml
+    sed -i 's/startingValue/startingvalue/' $dem_old_file.xml
+fi
 
 
 ## Multilook the geometry files if specified
-dem_new_file='hgt.geo'
-los_new_file='los.geo'
-printf "\n>>> Multilook geometry files \n"
-if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
-    looks.py -i $dem_old_file -o $dem_new_file -r $rlooks -a $alooks
-    looks.py -i $los_old_file -o $los_new_file -r $rlooks -a $alooks
+if false; then
+    cd $pair_dir/merged
+    dem_new_file='hgt.geo'
+    los_new_file='los.geo'
+    printf "\n>>> Multilook geometry files \n"
+    if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
+        looks.py -i $dem_old_file -o $dem_new_file -r $rlooks -a $alooks
+        looks.py -i $los_old_file -o $los_new_file -r $rlooks -a $alooks
+    fi
 fi
 
 
 ## Copy DEM and LOS files across
-printf "\n>>> Copy DEM and LOS files to output directory \n"
-cp $dem_new_file* $los_new_file* $OUTDIR/geom_reference/
-rm -rf *aux*
-cd $process_dir 
+if false; then
+    cd $pair_dir/merged
+    printf "\n>>> Copy DEM and LOS files to output directory \n"
+    cp $dem_new_file* $los_new_file* $OUTDIR/$geodir/
+    rm -rf *aux*
+fi
 
-printf "\n>>> Do baselines and pairs multilook... \n"
-## Lets do baselines or the topsApp products
-#echo "Computing baselines"
-#getBaselines.py -d ./baselines
 
-## Lets do ISCE2 multilook for all pairs
-#echo "Multilooking all pairs"
-#if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
-#    getLooks.py -d $OUTDIR/interferograms -r $rlooks -a $alooks
-#fi
+## Baselines computation all topsApp pairs
+if true; then
+    cd $process_dir
+    printf "\n>>> Do baselines and pairs multilook... \n"
+    echo "Computing baselines"
+    getBaselines.py -d $basedir -r $refdir -s $secdir
+fi
+
+
+## Multilook all topsApp pairs
+if false; then
+    cd $process_dir
+    echo "Multilooking all pairs"
+    if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
+        getLooks.py -d $ifgmdir -r $rlooks -a $alooks
+    fi
+fi
+
 
 printf "\n>>> Preparations for loading topsApp products to MintPy is completed!\n"

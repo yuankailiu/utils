@@ -85,7 +85,7 @@ cd /net/kraken/nobak/
 mkdir my_name; cd my_name
 
 # make a symbolic link of this path to your home directory
-ln -s . ~/kraken-nobak
+ln -s /net/kraken/nobak/my_name/ ~/kraken-nobak
 
 # Go to kraken, the 60-day backup directory for storing codes, notes, etc (up to 5TB)
 
@@ -93,7 +93,7 @@ ln -s . ~/kraken-nobak
 mkdir my_name; cd my_name
 
 # make a symbolic link of this path to your home directory
-ln -s . ~/kraken-bak
+ln -s /net/kraken/bak/my_name/ ~/kraken-bak
 
 ## Now everytime you log on kamb, you will see and can `cd` into kraken (either bak or nobak)
 ## easily without needing to type the full paths to access them.

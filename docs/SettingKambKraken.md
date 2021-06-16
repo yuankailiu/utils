@@ -26,11 +26,11 @@ And you need to enter the password every time
 
 There is a way to avoid entering password every time
 
-Checkout this link (step 1 to 3):
+Checkout this link (step 1 to 3 can get the work done!):
 
 [https://phoenixnap.com/kb/setup-passwordless-ssh](https://phoenixnap.com/kb/setup-passwordless-ssh)
 
-We still need to type the full IP address  `kamb.gps.caltech.edu` when doing ssh.
+But, we still need to type the full IP address  `kamb.gps.caltech.edu` when doing ssh.
 
 To further save some effort, we can create SSH alias names. Do the following on our laptop:
 

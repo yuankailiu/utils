@@ -40,7 +40,7 @@ To further save some effort, we can create SSH alias names. Do the following on 
 # go into .ssh directory (if not exist, make one)
 cd ~/.ssh
 
-# create or edit a config file
+# create a config file if not exist
 vi config
 
 ## Paste the following in that config file

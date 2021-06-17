@@ -1,0 +1,45 @@
+if [ -r ~/.bashrc ]; then
+   source ~/.bashrc
+fi
+
+# Suppressing zsh verbose message in macOS
+export BASH_SILENCE_DEPRECATION_WARNING=1
+
+# let us setup prompt
+export PS1="\[\033[00;33m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "
+
+# Use unicode
+export LC_ALL=en_US.UTF-8
+
+
+# Source the corresponding .bashrc depending on the hostname
+if [[ $HOSTNAME = kamb* ]]
+then
+    echo "You are on KAMB (Simon's group machine)"
+    source ~/.bashrc_kamb
+elif [[ $HOSTNAME = arius* ]]
+    echo "You are on ARIUS (Ross's group machine)"
+    source ~/.bashrc_arius
+elif [[ $HOSTNAME = earth* ]]
+    echo "You are on GPS's Earth machine"
+    source ~/.bashrc
+fi
+
+
+# =====================================================================
+#                    Miniconda
+# =====================================================================
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/ykliu/apps/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ykliu/apps/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ykliu/apps/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ykliu/apps/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<

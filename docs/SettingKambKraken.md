@@ -4,13 +4,13 @@
 
 Here are some tips of setting up the computer (Kamb) ready for the InSAR related works
 
-Things that will be covered here:
+Things that are covered here:
 
 - Paths and environments settings on Kamb (Mark's server that we use for heavy computational work)
 - Setup to run Jupyter notebooks on Kamb
-  - Jupyter notebook provides a Matlab-like interface to run python code and display results and plots.
-  - There are several useful notebooks for the tutorials of `ARIA-tools` and `MintPy` available provided by the developers.
-- Installation of `ARIA-tools` and `MintPy` 
+  - Jupyter notebook provides a Matlab-like interface to run python codes and display results and plots.
+  - We will be uising several useful tutorial notebooks for both `ARIA-tools` and `MintPy` available provided by the developers soon.
+- Installations of `ARIA-tools` and `MintPy` 
 
 
 
@@ -20,11 +20,15 @@ Things that will be covered here:
 
 # SSH to Kamb
 
-In order get into the Kamb server, you will need to do the ssh every time
-Such as `ssh username@kamb.gps.caltech.edu`
-And you need to enter the password every time
+In order get into the Kamb server, you will need to do SSH every time.
 
-There is a way to avoid entering password every time
+```bash
+ssh username@kamb.gps.caltech.edu
+```
+
+This also requires you to enter the password every time.
+
+When doing this frequently on a daily basis, these are just too annoying. There is a way to avoid entering password every time
 
 Checkout this link (step 1 to 3 can get the work done!):
 

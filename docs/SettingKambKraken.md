@@ -63,7 +63,7 @@ Host earth
     ForwardX11Timeout = 24h
 ```
 
-Now, I can log into Kamb by simply doing `ssh username@kamb`
+Now, I can log into Kamb by simply doing `ssh kamb`
 
 Without having to type the full IP address and the password every time.
 
@@ -77,7 +77,7 @@ Without having to type the full IP address and the password every time.
 
 ```bash
 # First, do SSH to Kamb server, you will be at your home directory on Kamb
-ssh username@kamb.gps.caltech.edu
+ssh username@kamb.gps.caltech.edu    # or just do `ssh kamb` if you already set it up as mentioned above
 
 # Go kraken, the no backup directory for storting large dataset (up to 20TB)
 cd /net/kraken/nobak/
@@ -113,7 +113,7 @@ ln -s /net/kraken/bak/my_name/ ~/kraken-bak
 
 ```bash
 # Go to kamb
-ssh usename@kamb
+ssh kamb
 
 # Create a tools directory at your home directory on Kamb
 mkdir -p ~/tools; cd ~/tools

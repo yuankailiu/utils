@@ -30,7 +30,7 @@ Checkout this link (step 1 to 3 can get the work done!):
 
 [https://phoenixnap.com/kb/setup-passwordless-ssh](https://phoenixnap.com/kb/setup-passwordless-ssh)
 
-But, we still need to type the full IP address  `kamb.gps.caltech.edu` when doing ssh.
+But, we still need to type the username and the full IP address `username@kamb.gps.caltech.edu` when doing ssh.
 
 To further save some effort, we can create SSH alias names. Do the following on our laptop:
 
@@ -65,7 +65,7 @@ Host earth
 
 Now, I can log into Kamb by simply doing `ssh kamb`
 
-Without having to type the full IP address and the password every time.
+Without having to type my username, the full IP address, and the password every time.
 
 
 

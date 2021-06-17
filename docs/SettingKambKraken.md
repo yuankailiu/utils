@@ -40,10 +40,11 @@ To further save some effort, we can create SSH alias names. Do the following on 
 # go into .ssh directory (if not exist, make one)
 cd ~/.ssh
 
-# create a config file if not exist
+# create a config file and edit it 
+# (`vi` means you are using the vim text editor to edit the content of this `config` file)
 vi config
 
-## Paste the following in that config file
+## Paste the following in that `config` file. Then save (you can do `:wq` to save and exit vim editor).
 
 # KAMB server: Mark Simon's group
 Host kamb

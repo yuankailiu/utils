@@ -32,7 +32,9 @@ def cmdLineParse():
             help = 'output fig filename. Default: `topsRuntime.png`')
     parser.add_argument('-t', dest='title', type=str, default=' ',
             help = 'title of the plot, e.g., Descending_021')
-    
+    parser.add_argument('-s', dest='figsize', type=float, nargs='+', default=[20, 6],
+            help = 'figure size, default: [20, 6]')
+
     return parser.parse_args()
 
 
@@ -56,12 +58,14 @@ if __name__ == '__main__':
 
     # loop over all the pair dirs
     pairs = []
-    pairs_time = np.zeros([Nstep, len(folders)])
+    pairs_time = []
     for i in range(len(folders)):
         folder = folders[i]
         os.chdir(folder)
+        msg = folder[:-1]
         if not os.path.exists(logfile):
             os.chdir(workDir)
+            msg += '\tnoLogFile'
             continue
         with open(logfile,"r") as fi:
             tmp = []
@@ -74,9 +78,15 @@ if __name__ == '__main__':
                     tmp.append(secs)
         if len(tmp) == Nstep:
             pairs.append(folder[:-1])
-            pairs_time[:,i] = np.array(tmp)
+            pairs_time.append(np.array(tmp))
+            msg += '\telapse={:.2f} m'.format(np.sum(np.array(tmp))/60)
+        else:
+            msg += '\t< 21steps'
         os.chdir(workDir)
-    pairs_time = pairs_time[:,:len(pairs)]
+        print(msg)
+
+    pairs_time = np.array(pairs_time).T
+    print('Num of pairs processed:',len(pairs))
 
     # step names
     steps = [
@@ -105,14 +115,15 @@ if __name__ == '__main__':
 
     # plotting
     Pos    = np.arange(len(pairs))
-    plt.figure(figsize=[30,8])
+    plt.figure(figsize=inps.figsize)
     for i in range(Nstep):
         plt.bar(Pos, pairs_time[i,:], bottom=np.sum(pairs_time[0:i,:], axis=0),
                 width=1.0, edgecolor='w', linewidth=0.2, label=steps[i])
     plt.xticks(Pos, pairs, rotation=90)
+    plt.xlim(0,None)
     plt.yticks(np.arange(0,25200,1800), np.arange(0,25200,1800)/3600)
     plt.ylabel('Hours')
-    plt.legend()
+    plt.legend(loc='upper right')
     plt.title(title)
     plt.savefig('./{}'.format(outname), dpi=300, bbox_inches='tight')
 

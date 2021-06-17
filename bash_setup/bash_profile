@@ -1,0 +1,102 @@
+# .bash_profile
+
+##----------------- set path for bin ---------------------##
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/.local/bin" ] ; then
+    PATH="$HOME/.local/bin:$PATH"
+fi
+
+
+##---------------------- Conda -----------------------##
+# conda installed under: /home/ykliu/apps/miniconda3
+export TOOL_DIR=~/apps
+export CONDAPATH=${TOOL_DIR}/miniconda3
+export PATH=${PATH}:$CONDAPATH/bin
+export PATH=${PATH}:$CONDAPATH/condabin
+export PYTHON3DIR=${TOOL_DIR}/miniconda3
+export PATH=${PATH}:${PYTHON3DIR}/bin
+
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/home/ykliu/apps/miniconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/home/ykliu/apps/miniconda3/etc/profile.d/conda.sh" ]; then
+        . "/home/ykliu/apps/miniconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/home/ykliu/apps/miniconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+
+
+# ********** If not running interactively, don't do anything more! ***********
+[[ $- == *i* ]] || return
+
+##--------- Bash env for specific machines -------------##
+ARIUS=arius
+KAMB=kamb.gps.caltech.edu
+HOST=$(hostname)
+
+if [ $HOST == $KAMB ]
+then
+    BASHRC=.bashrc_kamb
+    echo "You are now on KAMB (Simons group); source $BASHRC >>"
+    if [ -f $HOME/$BASHRC ]; then . $HOME/$BASHRC; fi
+fi
+
+
+if [ $HOST == $ARIUS ]
+then
+    BASHRC=.bashrc_arius
+    echo "You are now on ARIUS (Ross group); source $BASHRC >>"
+    if [ -f $HOME/$BASHRC ]; then . $HOME/$BASHRC; fi
+fi
+
+
+
+
+##------------------- Jupyter ---------------------------##
+function jpn(){
+    jupyter notebook --no-browser --port=$1
+}
+
+function jpl(){
+    jupyter lab --no-browser --port=$1
+}
+
+function tport(){
+    ssh -N -f -L localhost:$2:localhost:$1 $3
+}
+
+function kport(){
+    port=$(ps aux|grep ssh|grep localhost|grep $1|awk '{print $2}')
+    if [ -z "$port" ]
+    then
+            echo '>> No forwarded port:'$1
+            echo '>> Check all SSH here:'
+            ps aux|grep ssh
+    else
+            while true; do
+                echo '>> Found process: '
+                echo '>>' $(ps aux|grep ssh|grep localhost|grep $1)
+                read -p ">> Do you wish to stop this process? [y]/n: " yn
+                case $yn in
+                 [Yy]* ) kill $port; break;;
+                 [Nn]* ) break;;
+                 * ) echo "Enter [y] or [n].";;
+                esac
+            done
+    fi
+}
+
+

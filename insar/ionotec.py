@@ -567,12 +567,12 @@ def plot_tec_animation(tec_file, save=False):
 
     # output
     if save:
-        outfig = '{}.gif'.format(os.path.abspath(igs_file))
+        outfig = '{}.gif'.format(os.path.abspath(tec_file))
         print('saving animation to {}'.format(outfig))
         save_kwargs = dict()
         save_kwargs['transparent'] = True
         #ani.save(outfig, writer='ffmpeg', dpi=150, **save_kwargs)
-        ani.save(outfig, writer='imagemagick', dpi=300, **save_kwargs)
+        ani.save(outfig, writer='imagemagick', dpi=300)
     print('showing animation ...')
     plt.show()
     return

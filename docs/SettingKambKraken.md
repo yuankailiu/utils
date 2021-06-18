@@ -422,9 +422,12 @@ export PATH=${PATH}:${PYTHON3DIR}/bin
 
 ## Installation of ARIA-tools 
 
+already covered above. More details here:
 The GitHub page of ARIA-tools: https://github.com/aria-tools/ARIA-tools
+
 
 ## Intallation of MintPy
 
+already covered above. More details here:
 The GitHub page of MintPy: https://github.com/insarlab/MintPy
 

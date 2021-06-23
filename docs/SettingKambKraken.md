@@ -148,40 +148,40 @@ We will use `git` to get the source codes of `ARIA-tools` (getting the InSAR unw
 
 [git](https://git-scm.com/) is an open source [version control system](https://www.atlassian.com/git/tutorials/what-is-version-control). You can find some very basic tutorials online if you are bored. Otherwise, we will only use the very basic stuff of `git` (e.g. how to download source codes of a open source software). The things explained in this document about `git` will be enough for us now.
 
-You might already have `git` installed on Kamb. If not, simply install it in the `base` conda env
+1. You might already have `git` installed on Kamb. If not, simply install it in the `base` conda env
 
-```bash
-# Go to Kamb
-ssh kamb
+   ```bash
+   # Go to Kamb
+   ssh kamb
+   
+   # You are now at the base env. The prompt will show (base)
+   
+   # Install git via conda
+   conda install git
+   
+   # check git version (you should have version >= 2.30.2)
+   git version
+   ```
 
-# You are now at the base env. The prompt will show (base)
+   
 
-# Install git via conda
-conda install git
+2. Now we can downlaod the "softwares" of ARIA-tools and MintPy. They are just a bunch of source codes written in Python, C, etc
 
-# check git version (you should have version >= 2.30.2)
-git version
-```
+   ```bash
+   # Go to the tools folder on Kamb
+   cd ~/tools
+   
+   # use git clone to download these open source softwares reposited at GitHub
+   git clone https://github.com/aria-tools/ARIA-tools.git
+   git clone https://github.com/insarlab/MintPy.git
+   git clone https://github.com/insarlab/PySolid.git
+   git clone https://github.com/yunjunz/PyAPS.git
+   
+   # Now you can see these folders (ARIA_tools, MintPy, PySolid, PyAPS) under tools directory
+   ls
+   ```
 
-
-
-Now we can downlaod the "softwares" of ARIA-tools and MintPy. They are just a bunch of source codes written in Python, C, etc
-
-```bash
-# Go to the tools folder on Kamb
-cd ~/tools
-
-# use git clone to download these open source softwares reposited at GitHub
-git clone https://github.com/aria-tools/ARIA-tools.git
-git clone https://github.com/insarlab/MintPy.git
-git clone https://github.com/insarlab/PySolid.git
-git clone https://github.com/yunjunz/PyAPS.git
-
-# Now you can see these folders (ARIA_tools, MintPy, PySolid, PyAPS) under tools directory
-ls
-```
-
-
+   
 
 Next, we will start to prepare the python environment and install some pre-requisites for running the above softwares.
 
@@ -189,159 +189,182 @@ Next, we will start to prepare the python environment and install some pre-requi
 
 # 4. Setting up `conda` Python environment
 
-Create an environment with packages needed for `ARIA-tools` and `MintPy`
+1. Prepare the `base` environment for running Jupyter Notebook. Do the following:
 
-```bash
-# First, the env you want to launch Jupyter (usually the base env) should intalled with nb_conda
-conda activate base
-conda install --channel conda-forge nb_conda
+   ```bash
+   # First, the env you want to launch Jupyter (usually the base env) should intalled with nb_conda
+   conda activate base
+   conda install --channel conda-forge nb_conda
+   ```
 
-# Create a new env for the InSAR softwares (ARIA-tools and MintPy)
-conda create -n insar    # create the env called "insar"
-conda activate insar		 # warm up the "insar" env
+   
 
-# Install some packages:
-# - python
-# - numpy
-# - matplotlib: matlab-like plotting in python
-# - jupyter: jupyter notebook
-# - jupyterlab: jupyter lab (an advanced, powered version of jupyter notebook)
-conda install --channel conda-forge --yes python numpy matplotlib jupyter jupyterlab
+2. Prepare a new environment for `ARIA-tools` and `MintPy` and their dependencies. We will create a new environment called `insar`. Do the following:
 
-# Install the packages required by those softwares (ARIA-tools, MintPy)
-conda install --channel conda-forge --yes --file MintPy/docs/conda.txt --file ARIA-tools/requirements.txt
+   ```bash
+   # Create a new env for the InSAR softwares (ARIA-tools and MintPy)
+   conda create -n insar    # create the env called "insar"
+   conda activate insar		 # warm up the "insar" env
+   
+   # Install some packages:
+   # - python
+   # - numpy
+   # - matplotlib: matlab-like plotting in python
+   # - jupyter: jupyter notebook
+   # - jupyterlab: jupyter lab (an advanced, powered version of jupyter notebook)
+   conda install --channel conda-forge --yes python numpy matplotlib jupyter jupyterlab
+   
+   # Install the packages required by those softwares (ARIA-tools, MintPy)
+   conda install --channel conda-forge --yes --file ~/tools/MintPy/docs/conda.txt --file ~/tools/ARIA-tools/requirements.txt
+   
+   # Install third-party dependencies required by ARIA-tools (not available from conda)
+   # Simply run the `setup.py` script which allows for easy compilation and installation of third-party dependencies (c-code).
+   python setup.py build
+   python setup.py install
+   
+   # Install third-party dependencies required by MintPy (not available from conda)
+   ln -s ${CONDA_PREFIX}/bin/cython ${CONDA_PREFIX}/bin/cython3
+   $CONDA_PREFIX/bin/pip install git+https://github.com/tylere/pykml.git
+   $CONDA_PREFIX/bin/pip install scalene      # CPU, GPU and memory profiler
+   $CONDA_PREFIX/bin/pip install ipynb        # import functions from ipynb files
+   
+   # Compile PySolid (requireed by MintPy)
+   cd ~/tools/PySolid/pysolid
+   f2py -c -m solid solid.for
+   
+   ```
 
-# install dependencies not available from conda
-ln -s ${CONDA_PREFIX}/bin/cython ${CONDA_PREFIX}/bin/cython3
-$CONDA_PREFIX/bin/pip install git+https://github.com/tylere/pykml.git
-$CONDA_PREFIX/bin/pip install scalene      # CPU, GPU and memory profiler
-$CONDA_PREFIX/bin/pip install ipynb        # import functions from ipynb files
+   
 
-# compile PySolid
-cd ~/tools/PySolid/pysolid
-f2py -c -m solid solid.for
+3. Set the following environment variables (paths) in your  `~/.bashrc`  on Kamb. So that every time when you log in Kamb, the paths of ARIA-tools and MintPy are all set automatically, and you can call their functions whereever you are on Kamb.
 
-```
+   ```bash
+   # Open the .bashrc file at your home directory on Kamb
+   vi ~/.bashrc
+   
+   ## ====================================================================== ##
+   ##          Paste the following to the end of the .bashrc file            ##
+   ## ====================================================================== ##
+   
+   # Define the root directory
+   export TOOL_DIR=~/tools
+   export DATA_DIR=~/data   # data / nobak
+   
+   if [ -z ${PYTHONPATH+x} ]; then export PYTHONPATH=""; fi
+   
+   ##-------------- MintPy / PyAPS / PySolid -------------##
+   export MINTPY_HOME=${TOOL_DIR}/MintPy
+   export PYTHONPATH=${PYTHONPATH}:${MINTPY_HOME}:${TOOL_DIR}/PyAPS:${TOOL_DIR}/PySolid
+   export PATH=${PATH}:${MINTPY_HOME}/mintpy
+   export WEATHER_DIR=${DATA_DIR}/aux
+   
+   ##-------------- ARIA-tools ---------------------------##
+   export ARIATOOLS_HOME=${TOOL_DIR}/ARIA-tools/tools
+   export PYTHONPATH=${PYTHONPATH}:${ARIATOOLS_HOME}
+   export PATH=${PATH}:${ARIATOOLS_HOME}/bin
+   ```
 
+   
 
+4. Now, `exit` Kamb (or just close the terminal) and re-login to see if all the installations are good.
 
-Set the following environment variables (paths) in your source file (e.g. `~/.bashrc`  on Kamb). So that when you log in Kamb, you can call functions at those paths.
+   ```bash
+   # disconnect kamb, or just close the terminal
+   exit
+   
+   # re-login
+   ssh kamb
+   
+   # first activate the `insar` conda env
+   # you must activate it every time you log in to use this env
+   conda activate insar
+   
+   # testing these softwares
+   ariaDownload.py -h       # test ARIA-tools
+   smallbaselineApp.py -h   # test MintPy
+   solid_earth_tides.py -h  # test PySolid
+   tropo_pyaps3.py -h       # test PyAPS
+   
+   ```
 
-```bash
-# Define the root directory
-export TOOL_DIR=~/tools
-export DATA_DIR=~/data   # data / nobak
+   
 
-if [ -z ${PYTHONPATH+x} ]; then export PYTHONPATH=""; fi
-
-##-------------- MintPy / PyAPS / PySolid -------------##
-export MINTPY_HOME=${TOOL_DIR}/MintPy
-export PYTHONPATH=${PYTHONPATH}:${MINTPY_HOME}:${TOOL_DIR}/PyAPS:${TOOL_DIR}/PySolid
-export PATH=${PATH}:${MINTPY_HOME}/mintpy
-export WEATHER_DIR=${DATA_DIR}/aux
-
-##-------------- ARIA-tools ---------------------------##
-export ARIATOOLS_HOME=${TOOL_DIR}/ARIA-tools/tools
-export PYTHONPATH=${PYTHONPATH}:${ARIATOOLS_HOME}
-export PATH=${PATH}:${ARIATOOLS_HOME}/bin
-```
-
-
-
-Now, exit Kamb, close the terminal. And log in again to see if all the installations work.
-
-```bash
-# disconnect kamb, or just close the terminal
-exit
-
-# re-login
-ssh kamb
-
-# first activate the `insar` conda env
-# you must activate it every time you log in to use this env
-conda activate insar
-
-# testing these softwares
-ariaDownload.py -h       # test ARIA-tools
-smallbaselineApp.py -h   # test MintPy
-solid_earth_tides.py -h  # test PySolid
-tropo_pyaps3.py -h       # test PyAPS
-
-```
-
-
-
-Hope the above works!
-
-
-
-# 5. How to use Jupyter Notebook on Kamb
+# 5. How to use Jupyter Notebook on Kamb?
 
 The most performant way to do Jupyter on Kamb is to [forward a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer, but gets the data through the tunnel from the server.
 
-With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
+I.e., with SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
 
-This Jupyter instance will only run as long as you have your SSH connection and shell open. If you want to keep Jupyter running even while you're logged out, you can open a [screen instance](https://linuxize.com/post/how-to-use-linux-screen/), and run the Jupyter command in there (that's what I do). Simply detach the screen and it'll stay running in the background. The next time you SSH into the machine, just open that same link as before, and your Jupyter process will be ready where you left it off.
+This Jupyter instance will only run as long as you have your SSH connection and shell open. If you want to keep Jupyter running even while you're logged out, you can open a [Linux screen instance](https://linuxize.com/post/how-to-use-linux-screen/), and run the Jupyter command in there (that's what I do). Simply detach the screen and it'll stay running in the background. The next time you SSH into the machine, just open that same link as before, and your Jupyter process will be ready where you left it off.
 
 
 
 By defining some bash aliases, we can achieve what we want easily:
 
 1. First, open a terminal on your laptop
+
 2. Open the ~/.bashrc by doing `vi ~/.bashrc`
+
 3. Append the below content at the end of  your ~/.bashrc file
 
-```bash
-##-----------USINGING JUPYTER NOTEBOOKS FROM REMOTE------------##
-function jpn(){
-    jupyter notebook --no-browser --port=$1
-}
+   ```bash
+   ##-----------USINGING JUPYTER NOTEBOOKS FROM REMOTE------------##
+   function jpn(){
+       jupyter notebook --no-browser --port=$1
+   }
+   
+   function jpl(){
+       jupyter lab --no-browser --port=$1
+   }
+   
+   function tport(){
+       ssh -N -f -L localhost:$2:localhost:$1 $3
+   }
+   
+   function kport(){
+       port=$(ps aux|grep ssh|grep localhost|grep $1|awk '{print $2}')
+       if [ -z "$port" ]
+       then
+               echo '>> No forwarded port:'$1
+               echo '>> Check all SSH here:'
+               ps aux|grep ssh
+       else
+               while true; do
+                   echo '>> Found process: '
+                   echo '>>' $(ps aux|grep ssh|grep localhost|grep $1)
+                   read -p ">> Do you wish to stop this process? [y]/n: " yn
+                   case $yn in
+                    [Yy]* ) kill $port; break;;
+                    [Nn]* ) break;;
+                    * ) echo "Enter [y] or [n].";;
+                   esac
+               done
+       fi
+   }
+   
+   ```
 
-function jpl(){
-    jupyter lab --no-browser --port=$1
-}
+   
 
-function tport(){
-    ssh -N -f -L localhost:$2:localhost:$1 $3
-}
-
-function kport(){
-    port=$(ps aux|grep ssh|grep localhost|grep $1|awk '{print $2}')
-    if [ -z "$port" ]
-    then
-            echo '>> No forwarded port:'$1
-            echo '>> Check all SSH here:'
-            ps aux|grep ssh
-    else
-            while true; do
-                echo '>> Found process: '
-                echo '>>' $(ps aux|grep ssh|grep localhost|grep $1)
-                read -p ">> Do you wish to stop this process? [y]/n: " yn
-                case $yn in
-                 [Yy]* ) kill $port; break;;
-                 [Nn]* ) break;;
-                 * ) echo "Enter [y] or [n].";;
-                esac
-            done
-    fi
-}
-
-```
-
-5. Do the same thing on the ~/.bashrc file on your KAMB account
-
-
-
-Functions explanations:
-
-- `jpn 5550 `: Run **Jupyter Notebook** in a specified port number #5550 in the background without opening it (execute on the remote machine)
-- `jpl 5550`: Run **Jupyter Lab** instead (execute on the remote machine)
-- `tport 5550 5551 username@kamb`: Forward the remote port #5550 to a local port #5551 via a tunnel ssh to that user on KAMB (execute on the local machine)
-- `kport 5551`: kill the local port #5551 (execute on the local machine)
+4. Do the same thing to the `~/.bashrc` file on your KAMB account
 
 
 
-After these function definitions, we can do the following to control the Jupyter Notebook remotely:
+**Functions explanations:**
+
+- Commands that are meant to be run on the remote machine (Kamb):
+  - `jpn 5550 `: Run **Jupyter Notebook** in a specified port number #5550 in the background without opening it
+  - `jpl 5550`: Run **Jupyter Lab** instead
+
+- Commands that are meant to be run on the local machine (your laptop):
+  - `tport 5550 5551 username@kamb`: Forward the remote port #5550 to a local port #5551 via a tunnel ssh to that user on KAMB
+  - `kport 5551`: kill the local port #5551
+
+
+
+**Examples:**
+
+​	After these function definitions, we can do the following to control the Jupyter Notebook remotely:
 
 1. Go to KAMB. `ssh username@kamb`
 2. Open a "screen instance" and name it "jupyter". `screen -S jupyter`

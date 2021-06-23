@@ -60,7 +60,7 @@ Host earth
     ForwardX11Timeout = 24h
 ```
 
-Now, I can log into Kamb by simply doing `ssh username@kamb`
+Now, I can log into Kamb by simply doing `ssh kamb`
 
 Without having to type the full IP address and the password every time.
 
@@ -106,8 +106,8 @@ ln -s . ~/kraken-bak
 # 2. Install Miniconda on Kamb
 
 ```bash
-# Go to kamb
-ssh usename@kamb
+# Go to kamb (a lazy way here)
+ssh kamb
 
 # Create a tools directory (for all the downloaded softwares, source codes) at your home directory on Kamb
 # -p command: make this directory if not exist. Then we `cd` into tools folder
@@ -119,13 +119,13 @@ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 # make the bash script executable
 chmod +x Miniconda3-latest-Linux-x86_64.sh
 
-# run ti to install
-./Miniconda3-latest-MacOSX-x86_64.sh -b -p ~/tools/miniconda3
+# run it to install
+./Miniconda3-latest-Linux-x86_64.sh -b -p ~/tools/miniconda3
 ~/tools/miniconda3/bin/conda init bash
 
 # Close and restart the shell for changes to take effect.
 exit                 # logout
-ssh usename@kamb     # login again
+ssh kamb				     # login again
 
 # First, set conda-forge as default conda channels 
 conda config --add channels conda-forge
@@ -152,7 +152,7 @@ You might already have `git` installed on Kamb. If not, simply install it in the
 
 ```bash
 # Go to Kamb
-ssh username@kamb
+ssh kamb
 
 # You are now at the base env. The prompt will show (base)
 
@@ -193,6 +193,7 @@ Create an environment with packages needed for `ARIA-tools` and `MintPy`
 
 ```bash
 # First, the env you want to launch Jupyter (usually the base env) should intalled with nb_conda
+conda activate base
 conda install --channel conda-forge nb_conda
 
 # Create a new env for the InSAR softwares (ARIA-tools and MintPy)
@@ -247,13 +248,14 @@ export PATH=${PATH}:${ARIATOOLS_HOME}/bin
 
 
 
-Now, exit Kamb, close the terminal. And log in again to see if it works.
+Now, exit Kamb, close the terminal. And log in again to see if all the installations work.
 
 ```bash
-# close terminal
+# disconnect kamb, or just close the terminal
+exit
 
 # re-login
-ssh username@kamb
+ssh kamb
 
 # first activate the `insar` conda env
 # you must activate it every time you log in to use this env
@@ -348,6 +350,48 @@ After these function definitions, we can do the following to control the Jupyter
 5. On your laptop, do `tport 5550 5551` to forward the port
 6. On the laptop, open your web browser and enter the url `http://localhost:5551/`
 7. Now you can play the Notebook!
+
+
+
+# 6. Download products from Earthdata
+
+1. Make sure you have an account for Earthdata Login: https://urs.earthdata.nasa.gov/profile
+
+2. Go to `Applications` > `Authorized Apps`
+3. Manually add and authorize the following apps:
+
+![image-20210623143401112](/Users/ykliu/Library/Application Support/typora-user-images/image-20210623143401112.png)
+
+
+
+4. In order to [access data over HTTP from a web server with curls and wget](https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+cURL+And+Wget), we need to enter our account name and password every time. We can configure the account credentials in a file for automatic authentication (no need for username and password every time). Please do the following:
+
+   ```bash
+   # go to your home dir
+   cd ~
+   
+   # make a .netrc file
+   touch .netrc
+   
+   # type in your account info, save into that .netrc file
+   echo "machine urs.earthdata.nasa.gov login uid_goes_here password password_goes_here" > .netrc
+   
+   # change permission: only you can read and write
+   chmod 0600 .netrc
+   
+   # Create a cookie file
+   # This will be used to persist sessions across individual cURL/Wget calls, making it more efficient.
+   cd ~
+   touch .urs_cookies
+   ```
+
+   + Now, `exit` the Kamb server and re-login again. Run the downlaod codes, see if you can download files without entering account info.
+
+
+
+
+
+
 
 
 

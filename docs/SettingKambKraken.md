@@ -360,32 +360,38 @@ After these function definitions, we can do the following to control the Jupyter
 2. Go to `Applications` > `Authorized Apps`
 3. Manually add and authorize the following apps:
 
-![image-20210623143401112](/Users/ykliu/Library/Application Support/typora-user-images/image-20210623143401112.png)
+![approved_apps](./img/authorized_apps.png)
+
+
+
+Then, you should have these in the agreements page automatically.
+
+![accepted_EULAs](./img/accepted_EULAs.png)
 
 
 
 4. In order to [access data over HTTP from a web server with curls and wget](https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+cURL+And+Wget), we need to enter our account name and password every time. We can configure the account credentials in a file for automatic authentication (no need for username and password every time). Please do the following:
 
-   ```bash
-   # go to your home dir
-   cd ~
-   
-   # make a .netrc file
-   touch .netrc
-   
-   # type in your account info, save into that .netrc file
-   echo "machine urs.earthdata.nasa.gov login uid_goes_here password password_goes_here" > .netrc
-   
-   # change permission: only you can read and write
-   chmod 0600 .netrc
-   
-   # Create a cookie file
-   # This will be used to persist sessions across individual cURL/Wget calls, making it more efficient.
-   cd ~
-   touch .urs_cookies
-   ```
+```bash
+# go to your home dir
+cd ~
 
-   + Now, `exit` the Kamb server and re-login again. Run the downlaod codes, see if you can download files without entering account info.
+# make a .netrc file
+touch .netrc
+
+# type in your account info, save into that .netrc file
+echo "machine urs.earthdata.nasa.gov login uid_goes_here password password_goes_here" > .netrc
+
+# change permission: only you can read and write
+chmod 0600 .netrc
+
+# Create a cookie file
+# This will be used to persist sessions across individual cURL/Wget calls, making it more efficient.
+cd ~
+touch .urs_cookies
+```
+
++ Now, `exit` the Kamb server and re-login again. Run the downlaod codes, see if you can download files without entering account info.
 
 
 
@@ -464,14 +470,19 @@ export PATH=${PATH}:${PYTHON3DIR}/bin
 
 
 
-## Installation of ARIA-tools 
-
-already covered above. More details here:
-The GitHub page of ARIA-tools: https://github.com/aria-tools/ARIA-tools
 
 
-## Intallation of MintPy
 
-already covered above. More details here:
-The GitHub page of MintPy: https://github.com/insarlab/MintPy
+
+## Useful links
+
++ [Linux GNU Screen instance](https://linuxize.com/post/how-to-use-linux-screen/)
++ [ARIA-tools]( https://github.com/aria-tools/ARIA-tools) at GitHub
++ [MintPy](https://github.com/insarlab/MintPy) at GitHub
++ [ATBD](https://github.com/nisar-solid/ATBD) at GitHub (its' development is still really immature...we will not use that for now)
+
++ [ASF Data Search](https://search.asf.alaska.edu/#/) (for searching Sentinel-1 SLCs, ARIA standard products)
++ [What is conda environments](https://conda.io/projects/conda/en/latest/user-guide/concepts/environments.html)
++ [Conda: Managing your environments](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)
++ [What is Git and GitHub??](https://blog.devmountain.com/git-vs-github-whats-the-difference/)
 

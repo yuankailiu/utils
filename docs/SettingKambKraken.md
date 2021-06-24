@@ -1,8 +1,6 @@
-# Setting up kamb & kraken for InSAR
+# Setting up kamb & kraken
 
-We will use Python and Jupyter Notebooks for computation, Python's matplotlib module for simple plots and Generic Mapping Tools (GMT) for plotting maps.
-
-Here are some tips of setting up the computer (Kamb) ready for the InSAR related works
+We will use Python and Jupyter Notebooks for computation, Python's matplotlib module for simple plots and Generic Mapping Tools (GMT) for plotting maps. Here are some guidance of setting up the computer (Kamb) ready for the InSAR related works
 
 Things that will be covered here:
 
@@ -14,21 +12,17 @@ Things that will be covered here:
 
 
 
+Let's get started!
+
 <br />
 
-# 0. SSH to Kamb
+## 0. SSH to Kamb (a setup for the laziness from human nature)
 
-In order get into the Kamb server, you will need to do the ssh every time
-Such as `ssh username@kamb.gps.caltech.edu`
-And you need to enter the password every time
+In order get into the Kamb server, you will need to do the ssh every time, such as, `ssh username@kamb.gps.caltech.edu`. This requires you to enter the password every time. There is a way to avoid entering password so frequently. Checkout this [guidance](https://www.thegeekstuff.com/2008/11/3-steps-to-perform-ssh-login-without-password-using-ssh-keygen-ssh-copy-id/) (Step1 to Step3 will do it).
 
-There is a way to avoid entering password every time
+<br />
 
-Checkout this link (step 1 to 3):
-
-[https://phoenixnap.com/kb/setup-passwordless-ssh](https://phoenixnap.com/kb/setup-passwordless-ssh)
-
-We still need to type the full IP address  `kamb.gps.caltech.edu` when doing ssh.
+After setting the above, we don't need to type password every time. But we still need to type our username and the full IP address when doing ssh, i.e., `ssh username@kamb.gps.caltech.edu`
 
 To further save some effort, we can create SSH alias names. Do the following on our laptop:
 
@@ -41,7 +35,10 @@ cd ~/.ssh
 # create or edit a config file
 vi config
 
-## Paste the following in that config file
+
+## ========================================== ##
+##   Paste the following in that config file  ##
+## ========================================== ##
 
 # KAMB server: Mark Simon's group
 Host kamb
@@ -60,17 +57,19 @@ Host earth
     ForwardX11Timeout = 24h
 ```
 
-Now, I can log into Kamb by simply doing `ssh kamb`
-
-Without having to type the full IP address and the password every time.
 
 
+Now, you don't need to type the username and the full IP address. From your laptop, you can log into Kamb by simply doing:
+
+```bash
+ssh kamb
+```
 
 <br />
 
 
 
-# 1. Access to Kraken (create your home directory there)
+## 1. Access to Kraken (create your home directory there)
 
 ```bash
 # SSH to Kamb server, you will be at your home directory on Kamb
@@ -103,7 +102,7 @@ ln -s /net/kraken/bak/my_name ~/kraken-bak
 
 
 
-# 2. Install Miniconda on Kamb
+## 2. Install Miniconda on Kamb
 
 ```bash
 # Go to kamb (a lazy way here)
@@ -142,7 +141,11 @@ Reference of the above guidance: [Yunjun's GitHub repository](https://github.com
 
 
 
-# 3. Git
+<br />
+
+
+
+## 3. Git
 
 We will use `git` to get the source codes of `ARIA-tools` (getting the InSAR unwrapped datasets) and `MintPy` (doing InSAR time-series analysis).
 
@@ -187,7 +190,11 @@ Next, we will start to prepare the python environment and install some pre-requi
 
 
 
-# 4. Setting up `conda` Python environment
+<br />
+
+
+
+## 4. Setting up `conda` Python environment
 
 1. Prepare the `base` environment for running Jupyter Notebook. Do the following:
 
@@ -287,9 +294,14 @@ Next, we will start to prepare the python environment and install some pre-requi
    
    ```
 
-   
 
-# 5. How to use Jupyter Notebook on Kamb?
+
+
+<br />
+
+
+
+## 5. How to use Jupyter Notebook on Kamb?
 
 The most performant way to do Jupyter on Kamb is to [forward a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer, but gets the data through the tunnel from the server.
 
@@ -366,17 +378,35 @@ By defining some bash aliases, we can achieve what we want easily:
 
 ​	After these function definitions, we can do the following to control the Jupyter Notebook remotely:
 
-1. Go to KAMB. `ssh username@kamb`
-2. Open a "screen instance" and name it "jupyter". `screen -S jupyter`
-3. Run Jupyer Notebook in the background. `jpn 5550`
-4. You can now close the screen (or even exit Kamb)
-5. On your laptop, do `tport 5550 5551` to forward the port
-6. On the laptop, open your web browser and enter the url `http://localhost:5551/`
-7. Now you can play the Notebook!
+1. Go to KAMB. `ssh kamb`
+2. Open a "screen instance" and name it, such as, "jupyter". `screen -S jupyter`
+3. Run Jupyer Notebook in the background: `jpn 5550` (with a port at 5550)
+4. Once it is run, you can copy the token that shows up.
+5. You can now detatch the screen session (or even exit Kamb, or close the terminal)
+6. Open a terminal on your laptop, do `tport 5550 5551` (forward port 5550 of Kamb to port 5551 of your local )
+7. On the laptop, open your web browser and enter the url `http://localhost:5551/` (we are going to listen to port 5551)
+8. The web browser may ask you to enter the token. Enter the token you just copied.
+9. Now you can play the Jupyter Notebook!
 
 
 
-# 6. Download products from Earthdata
+**Notes:**
+
+- The port numbers can be anything as long as nobody else is currently using it. So, make sure to specify 4 or even 5 digits (e.g., 4851, 88974) to avoid conflicting with other users on Kamb.
+
+- I think you can change it, from a token-verified way to a password-verified way. So that you can set your own password to play Jupyter Notebook on the web browser without needing to copy paste the long token (but I forget how to do it).
+
+- On you laptop, when you don't want to listen to that port anymore, just do `kport xxxx` to kill the forwarding process (xxxx is your local port number).
+
+- On Kamb, if you want to terminate the Jupyter Notebook completely, just log into Kamb, reconnect the screen session where the notebook is running. Then do `Ctrl + C` to kill it.
+
+  
+
+<br />
+
+
+
+## 6. Credentials for downloading products from Earthdata
 
 1. Make sure you have an account for Earthdata Login: https://urs.earthdata.nasa.gov/profile
 
@@ -418,20 +448,16 @@ touch .urs_cookies
 
 
 
+<br />
 
 
 
+## 7. Customize your `.bashrc` on Kamb (optional)
 
+- Syntax and format settings on the server. This can make your terminal display colorful texts and highlights.
+- Some aliases of bash commands. This makes command-calling easier.
 
-
-# More TBA...
-
-## How to set .bashrc or .bash_profile on Kamb
-
-- Path and format settings on the server
-- Some aliases of bash commands run in your terminal
-
-Add below (if they don't exist) to `~/.bashrc`
+Add below (if they don't exist) to `~/.bashrc`:
 
 ```
 # .bashrc
@@ -493,11 +519,9 @@ export PATH=${PATH}:${PYTHON3DIR}/bin
 
 
 
+<br />
 
-
-
-
-## Useful links
+# Useful links
 
 + [Linux GNU Screen instance](https://linuxize.com/post/how-to-use-linux-screen/)
 + [ARIA-tools]( https://github.com/aria-tools/ARIA-tools) at GitHub

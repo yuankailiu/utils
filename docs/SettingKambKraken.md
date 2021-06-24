@@ -578,4 +578,4 @@ export PATH=${PATH}:${PYTHON3DIR}/bin
 
 - [Scientific Colour Maps](https://www.fabiocrameri.ch/colourmaps/)
 - [Paul Tol's Notes](https://personal.sron.nl/~pault/): on colour schemes and templates
-- Plotting Data
+- [Essay - Plotting Data](https://github.com/yuankailiu/utils/blob/main/docs/notes/Santamarina_Essay_Plotting_data%20.pdf) by [Carlos Santamarina](https://www.kaust.edu.sa/en/study/faculty/carlos-santamarina)

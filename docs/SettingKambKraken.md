@@ -1,10 +1,10 @@
 # Setting up kamb & kraken
 
-We will use Python and Jupyter Notebooks for computation, Python's matplotlib module for simple plots and Generic Mapping Tools (GMT) for plotting maps. Here are some guidance of setting up the computer (Kamb) ready for the InSAR related works
+We will use [Python](https://www.python.org/) and [Jupyter Notebooks](https://jupyter.org/) for computation, Python's [matplotlib](https://matplotlib.org/) module for simple plots and [Generic Mapping Tools (GMT)](https://www.generic-mapping-tools.org/) for plotting maps. Here are some guidance of setting up the computer (Kamb) ready for the InSAR related works
 
 Things that will be covered here:
 
-- Paths and environments settings on Kamb (Mark's server that we use for heavy computational work)
+- Paths and environments settings on Kamb (named after the glaciologist [Barclay Kamb](https://calteches.library.caltech.edu/4534/1/Obituary.pdf); The server of Mark Simons group where we run heavy computations)
 - Setup to run Jupyter notebooks on Kamb
   - Jupyter notebook provides a Matlab-like interface to run python code and display results and plots.
   - There are several useful notebooks for the tutorials of `ARIA-tools` and `MintPy` available provided by the developers.
@@ -69,7 +69,10 @@ ssh kamb
 
 
 
-## 1. Access to Kraken (create your home directory there)
+## 1. Access to Kraken
+
+- Kraken is another server especially meant to store data. It is named after the [sea monster in Scandinavian folklore](https://en.wikipedia.org/wiki/Kraken); like a hub connecting to other machines with its' strong and agile tentacles.
+- Two subfolders under Kraken: `bak` (60-day backup for saving just codes) and `nobak` (no backup for saving Gigabyte-sized datasets)
 
 ```bash
 # SSH to Kamb server, you will be at your home directory on Kamb
@@ -229,6 +232,7 @@ Next, we will start to prepare the python environment and install some pre-requi
    
    # Install third-party dependencies required by ARIA-tools (not available from conda)
    # Simply run the `setup.py` script which allows for easy compilation and installation of third-party dependencies (c-code).
+   cd ~/tools/ARIA-tools/
    python setup.py build
    python setup.py install
    
@@ -318,25 +322,29 @@ By defining some bash aliases, we can achieve what we want easily:
 
 1. First, open a terminal on your laptop
 
-2. Open the ~/.bashrc by doing `vi ~/.bashrc`
+2. Open the ~/.bashrc by doing `vi ~/.bashrc`  
 
 3. Append the below content at the end of  your ~/.bashrc file
 
    ```bash
    ##-----------USINGING JUPYTER NOTEBOOKS FROM REMOTE------------##
    function jpn(){
+   		# run jupyter notebook. Example: jpn 5550
        jupyter notebook --no-browser --port=$1
    }
    
    function jpl(){
+   		# run jupyter lab. Example: jpl 5550
        jupyter lab --no-browser --port=$1
    }
    
    function tport(){
+   		# forward the remote port to a local port. Example: tport 5550 5551
        ssh -N -f -L localhost:$2:localhost:$1 $3
    }
    
    function kport(){
+   		# kill the forwarded port connection. Example: kport 5551 (equivalent to kport 5550)
        port=$(ps aux|grep ssh|grep localhost|grep $1|awk '{print $2}')
        if [ -z "$port" ]
        then
@@ -359,11 +367,18 @@ By defining some bash aliases, we can achieve what we want easily:
    
    ```
 
-   
+
+
 
 4. Do the same thing to the `~/.bashrc` file on your KAMB account
+5. Close both terminals on your laptop and on Kamb
+6. Re-open both terminals on your laptop and on Kamb, try those new functions we just defined
 
+<br />
 
+**If failed**: After doing the above, if your terminal still shows the error `command not found` when you run the newly defined functions (e.g., `jpn`, `jpl`, `tport`, `kport`), that means your `~/.bashrc` file [is not sourced by default](https://apple.stackexchange.com/questions/12993/why-doesnt-bashrc-run-automatically) when a Bash Shell terminal is opened. This could occur especially on your local machine (laptop). If that is the case, rather than pasting the contents to `~/.bashrc`, paste the above content to `~/.bash_profile` on your laptop. A quicker alternative way is to append `source ~/.profile` to the end of your `~/.bash_profile` file on your laptop. Close and reopen the terminal again, it should work.
+
+<br />
 
 **Functions explanations:**
 
@@ -377,33 +392,33 @@ By defining some bash aliases, we can achieve what we want easily:
 
 
 
-**Examples:**
+**Step-by-step example:**
 
-​	After these function definitions, we can do the following to control the Jupyter Notebook remotely:
+​	After the above function definitions, we can do the following steps to run the Jupyter Notebook remotely:
 
-1. Go to KAMB. `ssh kamb`
+1. Go to **KAMB**. `ssh kamb`
 2. Open a "screen instance" and name it, such as, "jupyter". `screen -S jupyter`
-3. Run Jupyer Notebook in the background: `jpn 5550` (with a port at 5550)
-4. Once it is run, you can copy the token that shows up.
+3. Run Jupyer Notebook in the background: `jpn 5550` (with a port 5550 at Kamb)
+4. Once it is run, you can copy the *token* that shows up (`token=1234567blablabla`).
 5. You can now detatch the screen session (or even exit Kamb, or close the terminal)
-6. Open a terminal on your laptop, do `tport 5550 5551` (forward port 5550 of Kamb to port 5551 of your local )
-7. On the laptop, open your web browser and enter the url `http://localhost:5551/` (we are going to listen to port 5551)
-8. The web browser may ask you to enter the token. Enter the token you just copied.
+6. Open a terminal **on your laptop**, do `tport 5550 5551` (forward port 5550 of Kamb to port 5551 of your local machine)
+7. **On the laptop**, open your web browser and enter the url `http://localhost:5551/` (we are going to listen to port 5551 locally)
+8. The web browser may ask you to enter the *token*. Enter the *token* you just copied.
 9. Now you can play the Jupyter Notebook!
 
-
+You only need to run step 1 to 6 once, the Notebook will always stand-by on Kamb in the background. Whenever you want to play the Notebook, just type the localhost:xxxx on the web browser to access it. This always requires your internet connection. So if your laptop internet connection is lost (e.g., your WiFi is bad, you go home from the office), you will need to re-do step 6 to forward the port again.
 
 **Notes:**
 
 - The port numbers can be anything as long as nobody else is currently using it. So, make sure to specify 4 or even 5 digits (e.g., 4851, 88974) to avoid conflicting with other users on Kamb.
 
-- I think you can change it, from a token-verified way to a password-verified way. So that you can set your own password to play Jupyter Notebook on the web browser without needing to copy paste the long token (but I forget how to do it).
-
 - On you laptop, when you don't want to listen to that port anymore, just do `kport xxxx` to kill the forwarding process (xxxx is your local port number).
 
 - On Kamb, if you want to terminate the Jupyter Notebook completely, just log into Kamb, reconnect the screen session where the notebook is running. Then do `Ctrl + C` to kill it.
 
-  
+- The token-based authentication can be changed to a password-based authentication. Then you can set your own password to play Jupyter Notebook on the web browser without needing to copy paste the long token.
+
+  ![jupyter_token_ask](./img/jupyter_token.png)
 
 <br />
 
@@ -553,6 +568,8 @@ export PATH=${PATH}:${PYTHON3DIR}/bin
 
 
 ### Bash, Linux, etc
+
+- [What is Linux bashrc?](https://www.routerhosting.com/knowledge-base/what-is-linux-bashrc-and-how-to-use-it-full-guide/)
 
 + [Linux GNU Screen instance](https://linuxize.com/post/how-to-use-linux-screen/)
 + [What is Git and GitHub??](https://blog.devmountain.com/git-vs-github-whats-the-difference/)

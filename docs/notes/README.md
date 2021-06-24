@@ -1,4 +1,4 @@
-# Santamarina_Essay_Plotting_data 
+# Tips & caveats for plotting data
 
 The short note provides a few important tips for making a correct, informative and readable scientific plot.
 

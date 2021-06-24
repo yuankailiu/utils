@@ -180,6 +180,9 @@ We will use `git` to get the source codes of `ARIA-tools` (getting the InSAR unw
    git clone https://github.com/insarlab/PySolid.git
    git clone https://github.com/yunjunz/PyAPS.git
    
+   # Also, git clone the documentation and tutorials for the ARIA-tools
+   git clone https://github.com/aria-tools/ARIA-tools-docs.git
+   
    # Now you can see these folders (ARIA_tools, MintPy, PySolid, PyAPS) under tools directory
    ls
    ```
@@ -523,13 +526,56 @@ export PATH=${PATH}:${PYTHON3DIR}/bin
 
 # Useful links
 
-+ [Linux GNU Screen instance](https://linuxize.com/post/how-to-use-linux-screen/)
-+ [ARIA-tools]( https://github.com/aria-tools/ARIA-tools) at GitHub
-+ [MintPy](https://github.com/insarlab/MintPy) at GitHub
-+ [ATBD](https://github.com/nisar-solid/ATBD) at GitHub (its' development is still really immature...we will not use that for now)
+### InSAR softwares docs
 
-+ [ASF Data Search](https://search.asf.alaska.edu/#/) (for searching Sentinel-1 SLCs, ARIA standard products)
++ [ARIA, JPL](https://aria.jpl.nasa.gov/products/): overview, products explanations
++ [ARIA-tools]( https://github.com/aria-tools/ARIA-tools): acquiring the unwrapped interferograms standard products
++ [ARIA-tools documentations](https://github.com/aria-tools/ARIA-tools-docs): tutorials
+
++ [MintPy](https://github.com/insarlab/MintPy): time-series analysis
++ [MintPy documentations](https://mintpy.readthedocs.io/en/latest/) : tutorials
++ [UNAVCO Short course material, 2020](https://github.com/isce-framework/isce2-docs): InSAR Processing and Time-Series Analysis for Geophysical Applications: InSAR Scientific Computing Environment (ISCE), ARIA Tools, and MintPy
++ [ATBD](https://github.com/nisar-solid/ATBD) (its' development is still really immature...we will not use that for now)
+
+
+
+### Data archives
+
++ [ASF Data Search](https://search.asf.alaska.edu/#/): search Sentinel-1 SLCs, ARIA standard products
++ [Earthdata Login](https://urs.earthdata.nasa.gov/profile)
+
+- [GMTSAR](https://topex.ucsd.edu/gmtsar/demgen/): download DEMs
+- [GMRT](https://www.gmrt.org/): Global Multi-Resolution Topography Data Synthesis (DEMs and Bathymetries)
+- [UTexas Plates](http://www-udc.ig.utexas.edu/external/plates/data.htm): plate boundaries
+- [Natural Earth Data, Roads](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/roads/): roads
+- [US cities lon lat](https://www.w3.org/2003/01/geo/test/ustowns/latlong.htm)
+
+
+
+### Bash, Linux, etc
+
++ [Linux GNU Screen instance](https://linuxize.com/post/how-to-use-linux-screen/)
++ [What is Git and GitHub??](https://blog.devmountain.com/git-vs-github-whats-the-difference/)
++ [Vim cheat sheet](https://vim.rtorr.com/)
+
+
+
+### Python, conda, etc
+
 + [What is conda environments](https://conda.io/projects/conda/en/latest/user-guide/concepts/environments.html)
 + [Conda: Managing your environments](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html)
-+ [What is Git and GitHub??](https://blog.devmountain.com/git-vs-github-whats-the-difference/)
 
+
+
+### Powerful apps for coding
+
++ [iterm2](https://iterm2.com/): a fancier and more flexible terminal that does amazing things
++ [Visual Studio Code](https://code.visualstudio.com/): a text editor with powerful IDE-like features (makes your code editing feels like Matlab interface)
+
+
+
+### Art of presenting
+
+- [Scientific Colour Maps](https://www.fabiocrameri.ch/colourmaps/)
+- [Paul Tol's Notes](https://personal.sron.nl/~pault/): on colour schemes and templates
+- Plotting Data

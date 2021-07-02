@@ -506,35 +506,18 @@ alias p='pwd'
 alias rm='rm -i'
 alias sbashrc='source ~/$BASHRC'
 alias sbashpr='source ~/.bash_profile'
-alias sinsarrc='source ~/apps/conda_envs/insar/config.rc'
-alias sfringerc='source ~/apps/conda_envs/fringe/config.rc'
 alias ssh='ssh -X'
 alias vi='vim'
 alias which='alias | /usr/bin/which --tty-only --read-alias --show-dot --show-tilde'
 
-
-##----------------- Set path for bin ---------------------##
-# set PATH so it includes user's private bin if it exists
-if [ -d "$HOME/bin" ] ; then
-    PATH="$HOME/bin:$PATH"
-fi
-
-# set PATH so it includes user's private bin if it exists
-if [ -d "$HOME/.local/bin" ] ; then
-    PATH="$HOME/.local/bin:$PATH"
-fi
-
-
-##---------------------- Conda -----------------------##
-# conda installed under: /home/ykliu/apps/miniconda3
-export TOOL_DIR=~/apps
-export CONDAPATH=${TOOL_DIR}/miniconda3
-export PATH=${PATH}:$CONDAPATH/bin
-export PATH=${PATH}:$CONDAPATH/condabin
-export PYTHON3DIR=${TOOL_DIR}/miniconda3
-export PATH=${PATH}:${PYTHON3DIR}/bin
 ```
 
+Add below to your `~/.bash_profile` if they are not there
+```bash
+if [ -r ~/.bashrc ]; then
+   source ~/.bashrc
+fi
+```
 
 
 <br />

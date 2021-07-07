@@ -298,10 +298,15 @@ Next, we will start to prepare the python environment and install some pre-requi
    smallbaselineApp.py -h   # test MintPy
    solid_earth_tides.py -h  # test PySolid
    tropo_pyaps3.py -h       # test PyAPS
-   
    ```
 
 
+
+5. Finally, we need to setup our account to use PyAPS to download Global Atmospheric Models for tropospheric delays correction. Please check [here](https://github.com/insarlab/MintPy/blob/main/docs/installation.md#notes-on-pyaps) about how to do it. 
+
+
+
+**Full version of the installation guide of MintPy and associated dependencies**: Please check the [official MintPy Installation guide](https://github.com/insarlab/MintPy/blob/main/docs/installation.md) written by the developer of MintPy, [Yunjun Zhang](https://github.com/yunjunz).
 
 
 <br />
@@ -503,6 +508,7 @@ alias ll='ls -l --color=auto'
 alias ls='ls --color=auto'
 alias mv='mv -i'
 alias p='pwd'
+alias pp='pwd -P'
 alias rm='rm -i'
 alias sbashrc='source ~/$BASHRC'
 alias sbashpr='source ~/.bash_profile'
@@ -519,12 +525,24 @@ if [ -r ~/.bashrc ]; then
 fi
 ```
 
+<br />
+
+
+
+
+
+# Papers of `ARIA-tools` and `MintPy`:
+
+- Buzzanga, B., Bekaert, D. P. S., Hamlington, B. D., & Sangha, S. S. (2020). Towards Sustained Monitoring of Subsidence at the Coast using InSAR and GPS: An Application in Hampton Roads, Virginia. Geophysical Research Letters, 47, e2020GL090013. https://doi.org/10.1029/2020GL090013
+- Yunjun, Z., Fattahi, H., and Amelung, F. (2019), Small baseline InSAR time series analysis: Unwrapping error correction and noise reduction, *Computers & Geosciences*, *133*, 104331, doi:[10.1016/j.cageo.2019.104331](https://doi.org/10.1016/j.cageo.2019.104331), [arXiv](https://eartharxiv.org/9sz6m/), [data & figures](https://github.com/geodesymiami/Yunjun_et_al-2019-MintPy).
 
 <br />
 
-# Useful links
+# Reference & useful links
 
-### InSAR softwares docs
+The information/guidance provided in this document is not original. It is a condenced version from some of the the following sources. Please refer to the corresponding links to know more about the details.
+
+### InSAR softwares & installation procedures
 
 + [ARIA, JPL](https://aria.jpl.nasa.gov/products/): overview, products explanations
 + [ARIA-tools]( https://github.com/aria-tools/ARIA-tools): acquiring the unwrapped interferograms standard products

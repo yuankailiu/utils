@@ -5,7 +5,7 @@
 #update: use new downloading URL of ESA orbit
 #        a little change to query format
 #        Cunren Liang, 04-JUL-2018
-#        Modified time window 
+#        Modified time window
 #        Ollie Stephenson, 23-JUL-2019
 
 import os
@@ -100,7 +100,7 @@ def query_file(zipname, otype='precise'):
     timebef = (tbef_slc - delta).strftime(queryfmt)
     timeaft = (taft_slc + delta).strftime(queryfmt)
     #query = url + '/?validity_start_time={0}..{1}'.format(timebef, timeaft)
-    
+
     session = requests.Session()
     fileList = []
     for i in range(1, 10000+1):
@@ -121,13 +121,13 @@ def query_file(zipname, otype='precise'):
 
     result = None
     for filename in fileList:
-        fields = filename.split('_') 
+        fields = filename.split('_')
         taft = datetime.datetime.strptime(fields[-1][0:15], datefmt)
         tbef = datetime.datetime.strptime(fields[-2][1:16], datefmt)
-        
+
         #time extension at both ends: 10 s, 1/3 of a slice
         #change to 1 hr
-        # time_extension = 3600 # Ollie's comment - lets try changing this 
+        # time_extension = 3600 # Ollie's comment - lets try changing this
         time_extension = 1000  # This seems to work for resorb
         if (tbef <= tbef_slc-datetime.timedelta(seconds=time_extension)) and \
            (taft >= taft_slc+datetime.timedelta(seconds=time_extension)):
@@ -193,14 +193,14 @@ if __name__ == '__main__':
     for i in range(nsafe):
         safename0 = (safenames[i].split('/'))[-1]
         print('downloading orbit file for {}'.format(safename0))
-        
+
         #get url
         if inps.otype in [0, 2]:
             otype = 'precise'
         else:
             otype = 'restituted'
         url = query_file(safenames[i], otype=otype)
-    
+
         if url == None and inps.otype == 2:
             url = query_file(safenames[i], otype='restituted')
 
@@ -219,7 +219,7 @@ if __name__ == '__main__':
             else:
                 safenames2.append(safename0)
                 print('failed to download URL: {}'.format(url))
-    
+
     print('\ntotal number of orbit files downloaded: {}'.format(len(orbitnames)))
     if safenames2 != []:
         print('no orbit was downloaded for the following files:')

@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Ollie Stephenson 2021 April
-# Do a few things to prepare an InSAR track for mintpy processing 
+# Do a few things to prepare an InSAR track for mintpy processing
 # Prep work before running
-#   Load ISCE 
+#   Load ISCE
 #   Make sure we have a topsApp_geo_los.xml file with the correct region, DEM, and geocode list
 #   Choose example pair for the track (don't pick a short one)
 
@@ -83,13 +83,13 @@ fi
 
 
 
-# ================= Running starting from below =======================
+# =================== Running starting from below ========================= ##
 
 ## Make folder for integrated data
 printf "\n>>> Create directory for saving \n"
-mkdir -p $ifgmdir/ 
+mkdir -p $ifgmdir/
 
-
+## ========================= Folder: reference==== ======================== ##
 ## Copy the referencedir/ and geom_refenrece/
 if false; then
     cd $pair_dir
@@ -99,11 +99,13 @@ if false; then
 fi
 
 
+
+## ======================== Folder: geom_reference ======================== ##
 ## Geocode LOS file
 if false; then
     cd $pair_dir
     printf "\n>>> Geocode the LOS file \n"
-    # Run geocode on ['merged/los.rdr'] using topsApp_geocodeLOS.xml with the same bounding box and DEM 
+    # Run geocode on ['merged/los.rdr'] using topsApp_geocodeLOS.xml with the same bounding box and DEM
     topsApp.py ../example/topsApp_geocodeLOS.xml --dostep=geocode
 fi
 
@@ -127,7 +129,7 @@ if false; then
     if [ `cat $dem_vrt_file | wc -l` -le "9" ]
     then
         sed -i "2 i $l2" $dem_vrt_file   # -i does additions directly to the file
-        sed -i "2 i $l1" $dem_vrt_file 
+        sed -i "2 i $l1" $dem_vrt_file
     fi
 fi
 
@@ -166,6 +168,7 @@ if false; then
 fi
 
 
+## ============================ Folder: baselines ============================== ##
 ## Baselines computation all topsApp pairs
 if true; then
     cd $process_dir
@@ -175,6 +178,7 @@ if true; then
 fi
 
 
+## ========================== Folder: interferograms =========================== ##
 ## Multilook all topsApp pairs
 if false; then
     cd $process_dir

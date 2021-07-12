@@ -13,7 +13,6 @@ import sys
 import glob
 import argparse
 import subprocess
-import numpy as np
 from datetime import datetime as dt
 from mintpy.utils import ptime
 
@@ -29,11 +28,13 @@ def cmdLineParse():
             3. save new files in merged/YYYYMMDD-YYYYMMDD/ under the working dir as topsStack.py \n'
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-d', dest='dir', type=str, default='./merged/interferograms',
-            help = 'output directory. Default: `./merged/interferograms`')    
+            help = 'output directory. (default: %(default)s)')
     parser.add_argument('-r', dest='rlooks', type=int, required=True,
             help = 'range looks (int), e.g., 10')
     parser.add_argument('-a', dest='alooks', type=int, required=True,
             help = 'azimuth looks (int), e.g., 10')
+    parser.add_argument('-p', dest='subproc_opt', type=str, default='popen',
+            help = 'choose either `run` or `popen`. (default: %(default)s)')
 
     if len(sys.argv) <= 1:
         print('')
@@ -55,7 +56,8 @@ if __name__ == '__main__':
     print('Read acquisitions from the current working path: %s' % current_path)
 
     pairs = glob.glob('*-*/')
-    print('Start multilooking are acquisitions...')
+    print('Start multilooking all acquisitions...')
+    print('Subprocess option: {}'.format(inps.subproc_opt))
 
     n = 0
     for i in range(len(pairs)):
@@ -66,7 +68,7 @@ if __name__ == '__main__':
 
         # Get original path for this pair
         input_path = './{}merged'.format(pairs[i])
-        
+
         # Make baseline directory and have a baseline filename
         if not os.path.exists(output_path):
             os.makedirs(output_path)
@@ -83,21 +85,26 @@ if __name__ == '__main__':
         o_cmp = '{}/{}'.format(output_path, i_cmp.split('/')[-1])
         o_ion = '{}/{}'.format(output_path, i_ion.split('/')[-1])
 
-        bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(i_unw, o_unw, rlooks, alooks)
-        print('\n >> ', bashCmd)
-        process = subprocess.run(bashCmd, shell=True)
+        # Write a logfile
+        f = open('{}/looksCompute.log'.format(output_path), 'w+')
+        f.write('### [ Run looks.py ]\n')
+        f.write('#   >> Time   now     : {}\n'.format(start_dt))
+        f.write('#   >> subprocess opt : {}\n'.format(inps.subproc_opt))
+        f.write('#   >> range looks    : {}\n'.format(rlooks))
+        f.write('#   >> azimuth looks  : {}\n\n'.format(alooks))
 
-        bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(i_cor, o_cor, rlooks, alooks)
-        print('\n >> ', bashCmd)
-        process = subprocess.run(bashCmd, shell=True)
+        ## run looks.py on datasets:
+        if inps.subproc_opt == 'run':
+            for infile, outfile in list(zip([i_unw, i_cor, i_cmp, i_ion], [o_unw, o_cor, o_cmp, o_ion])):
+                bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(infile, outfile, rlooks, alooks)
+                print('\n >> ', bashCmd)
+                process = subprocess.run(bashCmd, stdout=f, shell=True)
 
-        bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(i_cmp, o_cmp, rlooks, alooks)
-        print('\n >> ', bashCmd)
-        process = subprocess.run(bashCmd, shell=True)
-
-        bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(i_ion, o_ion, rlooks, alooks)
-        print('\n >> ', bashCmd)
-        process = subprocess.run(bashCmd, shell=True)
+        # still problematic, may overwrite input files (not recommended)
+        elif inps.subproc_opt == 'popen':
+            for infile, outfile in list(zip([i_unw, i_cor, i_cmp, i_ion], [o_unw, o_cor, o_cmp, o_ion])):
+                bashCmd = ['looks.py', '-i', infile, '-o', outfile, '-r', str(rlooks), '-a', str(alooks)]
+                process1 = subprocess.Popen(bashCmd, stdout=f)
 
         n += 1
     print('Multilooked %d pairs' % int(n))

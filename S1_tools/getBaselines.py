@@ -8,7 +8,7 @@
 #       1. get all dates in the working directory, e.g., process/
 #       2. use `computeBaseline.py` to calculate baselines (isce2/contrib/stack/topsStack/computeBaseline.py)
 #       3. saved baselines to txt files under a baselines/ directory as topsStack.py
-# Required: 
+# Required:
 #       1. load isce2 topsStack from path, do one of the the following:
 #           1) load_tops_stack
 #           2) export PATH=${PATH}:${ISCE_STACK}/topsStack
@@ -43,11 +43,13 @@ def cmdLineParse():
                 This is just to use ptime function to convert YYMMDD to YYYYMMDD format \n'
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-d', dest='dir', type=str, default='./baselines',
-            help = 'output directory for the baselines. Default: `./baselines`')
+            help = 'output directory for the baselines. (default: %(default)s)')
     parser.add_argument('-r', dest='reference_dir', type=str, default='referencedir',
-            help = 'default directory name for the reference acquisition. Default: `referencedir`')
+            help = 'default directory name for the reference acquisition. (default: %(default)s)')
     parser.add_argument('-s', dest='secondary_dir', type=str, default='secondarydir',
-            help = 'default directory name for the secondary acquisition. Default: `secondarydir`')
+            help = 'default directory name for the secondary acquisition. (default: %(default)s)')
+    parser.add_argument('-p', dest='subproc_opt', type=str, default='popen',
+            help = 'choose either `run` or `popen`. (default: %(default)s)')
 
     if len(sys.argv) <= 1:
         print('')
@@ -81,6 +83,7 @@ if __name__ == '__main__':
     print('Set the first date as the common reference for baseline computation: %s' % reference)
     print('Start making baseline folders, compute baselines...')
     print('Output files will be saved under {}/*_*'.format(outdir))
+    print('subprocess option: {}'.format(inps.subproc_opt))
 
     n = 0
     for i in range(1,len(dates[:])):
@@ -103,15 +106,15 @@ if __name__ == '__main__':
             pos_sec=inps.secondary_dir
         refpath = './{}/{}'.format(p_ref, pos_ref)
         secpath = './{}/{}'.format(p_sec, pos_sec)
-        
+
         # Make baseline directory and have a baseline filename
         print('  ', baseline_pair)
         if not os.path.exists(baseline_path):
             os.makedirs(baseline_path)
-            
+
         # Write a logfile
         f = open('{}/baselineCompute.log'.format(baseline_path), 'w+')
-        f.write('### [ Run computeBaseline.py ]\n')    
+        f.write('### [ Run computeBaseline.py ]\n')
         f.write('#   >> Time   now    : {}\n'.format(start_dt))
         f.write('#   >> Baseline pair : {}\n'.format(baseline_pair))
         f.write('#   >> Reference path: {}\n'.format(refpath))
@@ -120,13 +123,15 @@ if __name__ == '__main__':
         # Run `computeBaseline.py` and keep the output to the logfile
         baseline_file = '{}/{}.txt'.format(baseline_path, baseline_pair)
 
-        # method 1:
-        bashCmd = 'computeBaseline.py -m {} -s {} -b {}'.format(refpath, secpath, baseline_file)
-        process = subprocess.run(bashCmd, stdout=f, shell=True)
+        if inps.subproc_opt == 'run':
+            # subprocess option 1: sequential computing
+            bashCmd = 'computeBaseline.py -m {} -s {} -b {}'.format(refpath, secpath, baseline_file)
+            process = subprocess.run(bashCmd, stdout=f, shell=True)
 
-        # method 2:
-        #bashCmd = ['computeBaseline.py', '-m', refpath, '-s', secpath, '-b', baseline_file]
-        #process = subprocess.Popen(bashCmd, stdout=f)
+        elif inps.subproc_opt == 'popen':
+            # subprocess option 2: parallel in background; faster
+            bashCmd = ['computeBaseline.py', '-m', refpath, '-s', secpath, '-b', baseline_file]
+            process = subprocess.Popen(bashCmd, stdout=f)
 
         n += 1
 

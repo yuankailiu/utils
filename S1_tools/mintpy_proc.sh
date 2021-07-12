@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Ollie Stephenson 2021 April
-# Do a few things to prepare an InSAR track for mintpy processing 
+# Do a few things to prepare an InSAR track for mintpy processing
 # Prep work before running
-#   Load ISCE 
+#   Load ISCE
 #   Make sure we have a topsApp_geo_los.xml file with the correct region, DEM, and geocode list
 #   Choose example pair for the track (don't pick a short one)
 
@@ -63,6 +63,14 @@ refdir="referencedir"
 secdir="secondarydir"
 geodir="geom_reference"
 
+# other files
+dem_new_file='hgt.geo'
+los_new_file='los.geo'
+lat_geo='lat.geo'
+lon_geo='lon.geo'
+waterBody_ori='/net/kraken/nobak/ykliu/aqaba/a087/isce/broad_dem/wbd_1_arcsec/swbdLat_N25_N35_Lon_E032_E039.wbd'
+waterBody_new='./waterBody.geo'
+
 # output paths for saving files
 basedir=$OUTDIR/baselines
 ifgmdir=$OUTDIR/interferograms
@@ -83,13 +91,14 @@ fi
 
 
 
-# ================= Running starting from below =======================
+# =================== Running starting from below ========================= ##
 
 ## Make folder for integrated data
 printf "\n>>> Create directory for saving \n"
-mkdir -p $ifgmdir/ 
+mkdir -p $ifgmdir/
 
 
+## ========================= Folder: reference==== ======================== ##
 ## Copy the referencedir/ and geom_refenrece/
 if false; then
     cd $pair_dir
@@ -99,17 +108,18 @@ if false; then
 fi
 
 
+## ======================== Folder: geom_reference ======================== ##
 ## Geocode LOS file
 if false; then
     cd $pair_dir
     printf "\n>>> Geocode the LOS file \n"
-    # Run geocode on ['merged/los.rdr'] using topsApp_geocodeLOS.xml with the same bounding box and DEM 
+    # Run geocode on ['merged/los.rdr'] using topsApp_geocodeLOS.xml with the same bounding box and DEM
     topsApp.py ../example/topsApp_geocodeLOS.xml --dostep=geocode
 fi
 
 
 ## Get the geotransform from a vrt file
-if false; then
+if true; then
     cd $pair_dir/merged
     geo_vrt_file='filt_topophase.unw.geo.vrt'
     dem_old_file='dem.crop'
@@ -119,7 +129,7 @@ fi
 
 
 ## Append the geotransform to the dem.crop.vrt
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> Get geotransform from $geo_vrt_file, add to $dem_vrt_file \n"
     l1=$(sed -n '2p' $geo_vrt_file)
@@ -127,7 +137,7 @@ if false; then
     if [ `cat $dem_vrt_file | wc -l` -le "9" ]
     then
         sed -i "2 i $l2" $dem_vrt_file   # -i does additions directly to the file
-        sed -i "2 i $l1" $dem_vrt_file 
+        sed -i "2 i $l1" $dem_vrt_file
     fi
 fi
 
@@ -147,8 +157,6 @@ fi
 ## Multilook the geometry files if specified
 if false; then
     cd $pair_dir/merged
-    dem_new_file='hgt.geo'
-    los_new_file='los.geo'
     printf "\n>>> Multilook geometry files \n"
     if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
         looks.py -i $dem_old_file -o $dem_new_file -r $rlooks -a $alooks
@@ -166,8 +174,53 @@ if false; then
 fi
 
 
-## Baselines computation all topsApp pairs
+## generate geo-coord lat.geo and lon.geo files
 if true; then
+    cd $OUTDIR/$geodir/
+    printf "\n>>> Generate geo-coord lat and lon files \n"
+    getlalo.py -t $dem_new_file.vrt --out-lat $lat_geo --out-lon $lon_geo
+    if [ `cat $lat_geo.vrt | wc -l` -le "9" ]
+    then
+        sed -i "2 i $l2" $lat_geo.vrt
+        sed -i "2 i $l1" $lat_geo.vrt
+    fi
+    gdal_translate $lat_geo.vrt $lat_geo -of ISCE
+    sed -i 's/Coordinate1/coordinate1/'     $lat_geo.xml
+    sed -i 's/Coordinate2/coordinate2/'     $lat_geo.xml
+    sed -i 's/startingValue/startingvalue/' $lat_geo.xml
+
+    if [ `cat $lon_geo.vrt | wc -l` -le "9" ]
+    then
+        sed -i "2 i $l2" $lon_geo.vrt
+        sed -i "2 i $l1" $lon_geo.vrt
+    fi
+    gdal_translate $lon_geo.vrt $lon_geo -of ISCE
+    sed -i 's/Coordinate1/coordinate1/'     $lon_geo.xml
+    sed -i 's/Coordinate2/coordinate2/'     $lon_geo.xml
+    sed -i 's/startingValue/startingvalue/' $lon_geo.xml
+fi
+
+
+## generate waterBody file with the same spatial dimension
+if true; then
+    cd $OUTDIR/$geodir/
+    printf "\n>>> Generate geocoded waterBody file \n"
+    getwbdMask.py --lat $lat_geo --lon $lon_geo -i $waterBody_ori -o $waterBody_new
+    if [ `cat $waterBody_new.vrt | wc -l` -le "9" ]
+    then
+        sed -i "2 i $l2" $waterBody_new.vrt
+        sed -i "2 i $l1" $waterBody_new.vrt
+    fi
+    gdal_translate $waterBody_new.vrt $waterBody_new -of ISCE
+    sed -i 's/Coordinate1/coordinate1/'     $waterBody_new.xml
+    sed -i 's/Coordinate2/coordinate2/'     $waterBody_new.xml
+    sed -i 's/startingValue/startingvalue/' $waterBody_new.xml
+fi
+
+
+## ============================ Folder: baselines ============================== ##
+## Baselines computation all topsApp pairs
+if false; then
     cd $process_dir
     printf "\n>>> Do baselines and pairs multilook... \n"
     echo "Computing baselines"
@@ -175,6 +228,7 @@ if true; then
 fi
 
 
+## ========================== Folder: interferograms =========================== ##
 ## Multilook all topsApp pairs
 if false; then
     cd $process_dir

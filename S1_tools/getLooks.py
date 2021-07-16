@@ -93,18 +93,28 @@ if __name__ == '__main__':
         f.write('#   >> range looks    : {}\n'.format(rlooks))
         f.write('#   >> azimuth looks  : {}\n\n'.format(alooks))
 
-        ## run looks.py on datasets:
-        if inps.subproc_opt == 'run':
-            for infile, outfile in list(zip([i_unw, i_cor, i_cmp, i_ion], [o_unw, o_cor, o_cmp, o_ion])):
-                bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(infile, outfile, rlooks, alooks)
+        if (rlooks!=1) and (alooks!=1):
+            print('Multilook the following files to {}'.format(output_path))
+            ## run looks.py on datasets:
+            if inps.subproc_opt == 'run':
+                for infile, outfile in list(zip([i_unw, i_cor, i_cmp, i_ion], [o_unw, o_cor, o_cmp, o_ion])):
+                    bashCmd = 'looks.py -i {} -o {} -r {} -a {}'.format(infile, outfile, rlooks, alooks)
+                    print('\n >> ', bashCmd)
+                    process = subprocess.run(bashCmd, stdout=f, shell=True)
+
+            # still problematic, may overwrite input files (not recommended)
+            elif inps.subproc_opt == 'popen':
+                for infile, outfile in list(zip([i_unw, i_cor, i_cmp, i_ion], [o_unw, o_cor, o_cmp, o_ion])):
+                    bashCmd = ['looks.py', '-i', infile, '-o', outfile, '-r', str(rlooks), '-a', str(alooks)]
+                    process = subprocess.Popen(bashCmd, stdout=f)
+
+        else:
+            # if multilook 1, just copy files over there
+            print('Without multilook, copy the following files to {}'.format(output_path))
+            for infile in [i_unw, i_cor, i_cmp, i_ion]:
+                bashCmd = 'rsync {}* {}'.format(infile, output_path)
                 print('\n >> ', bashCmd)
                 process = subprocess.run(bashCmd, stdout=f, shell=True)
-
-        # still problematic, may overwrite input files (not recommended)
-        elif inps.subproc_opt == 'popen':
-            for infile, outfile in list(zip([i_unw, i_cor, i_cmp, i_ion], [o_unw, o_cor, o_cmp, o_ion])):
-                bashCmd = ['looks.py', '-i', infile, '-o', outfile, '-r', str(rlooks), '-a', str(alooks)]
-                process1 = subprocess.Popen(bashCmd, stdout=f)
 
         n += 1
     print('Multilooked %d pairs' % int(n))

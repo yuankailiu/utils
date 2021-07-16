@@ -61,6 +61,7 @@ if __name__ == '__main__':
     else:
         print('Use input geocoded template file (.vrt or .xml) to create lat lon files')
         infile = inps.templFile
+        print(' use the template file: {}'.format(infile))
         if infile.endswith('.vrt'):
             attr = readfile.read_gdal_vrt(infile)
         elif infile.endswith('.xml'):

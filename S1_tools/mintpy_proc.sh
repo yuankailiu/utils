@@ -69,6 +69,7 @@ los_new_file='los.geo'
 lat_geo='lat.geo'
 lon_geo='lon.geo'
 waterBody_ori='/net/kraken/nobak/ykliu/aqaba/a087/isce/broad_dem/wbd_1_arcsec/swbdLat_N25_N35_Lon_E032_E039.wbd'
+waterBody_ori='/marmot-nobak/ykliu/walker/dem/wbd_1_arcsec/swbdLat_N36_N41_Lon_W123_W116.wbd'
 waterBody_new='./waterBody.geo'
 
 # output paths for saving files
@@ -98,7 +99,7 @@ printf "\n>>> Create directory for saving \n"
 mkdir -p $ifgmdir/
 
 
-## ========================= Folder: reference==== ======================== ##
+## ========================= Folder: reference ============================ ##
 ## Copy the referencedir/ and geom_refenrece/
 if false; then
     cd $pair_dir
@@ -143,7 +144,7 @@ fi
 
 
 ## GDAL translate the DEM file / change variable labels
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> GDAL translate for $dem_old_file \n"
     gdal_translate $dem_vrt_file $dem_old_file -of ISCE
@@ -155,22 +156,35 @@ fi
 
 
 ## Multilook the geometry files if specified
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> Multilook geometry files \n"
     if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
         looks.py -i $dem_old_file -o $dem_new_file -r $rlooks -a $alooks
         looks.py -i $los_old_file -o $los_new_file -r $rlooks -a $alooks
     fi
+    printf "\n>>> Just copy geometry files since multilook = 1 \n"
+    if [ $rlooks -eq 1 -a $alooks -eq 1 ]; then
+        cp $dem_old_file     $dem_new_file
+        cp $dem_old_file.vrt $dem_new_file.vrt
+        cp $dem_old_file.xml $dem_new_file.xml
+        cp $los_old_file     $los_new_file
+        cp $los_old_file.vrt $los_new_file.vrt
+        cp $los_old_file.xml $los_new_file.xml
+        sed -i "s/$dem_old_file/$dem_new_file/"  $dem_new_file.xml
+        sed -i "s/$los_old_file/$los_new_file/"  $los_new_file.xml
+        sed -i "s/$dem_old_file/$dem_new_file/"  $dem_new_file.vrt
+        sed -i "s/$los_old_file/$los_new_file/"  $los_new_file.vrt
+    fi
 fi
 
 
 ## Copy DEM and LOS files across
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> Copy DEM and LOS files to output directory \n"
     cp $dem_new_file* $los_new_file* $OUTDIR/$geodir/
-    rm -rf *aux*
+    rm -rf *aux* */*aux*
 fi
 
 
@@ -205,7 +219,7 @@ fi
 if true; then
     cd $OUTDIR/$geodir/
     printf "\n>>> Generate geocoded waterBody file \n"
-    getwbdMask.py --lat $lat_geo --lon $lon_geo -i $waterBody_ori -o $waterBody_new
+    getwbd.py --lat $lat_geo --lon $lon_geo -i $waterBody_ori -o $waterBody_new
     if [ `cat $waterBody_new.vrt | wc -l` -le "9" ]
     then
         sed -i "2 i $l2" $waterBody_new.vrt
@@ -215,12 +229,13 @@ if true; then
     sed -i 's/Coordinate1/coordinate1/'     $waterBody_new.xml
     sed -i 's/Coordinate2/coordinate2/'     $waterBody_new.xml
     sed -i 's/startingValue/startingvalue/' $waterBody_new.xml
+    rm -rf *aux* */*aux*
 fi
 
 
 ## ============================ Folder: baselines ============================== ##
 ## Baselines computation all topsApp pairs
-if false; then
+if true; then
     cd $process_dir
     printf "\n>>> Do baselines and pairs multilook... \n"
     echo "Computing baselines"
@@ -230,10 +245,10 @@ fi
 
 ## ========================== Folder: interferograms =========================== ##
 ## Multilook all topsApp pairs
-if false; then
+if true; then
     cd $process_dir
-    echo "Multilooking all pairs"
-    if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
+    echo "Multilooking all pairs; copy files if multilook=1"
+    if [ $rlooks -ge 1 -o $alooks -ge 1 ]; then
         getLooks.py -d $ifgmdir -r $rlooks -a $alooks
     fi
 fi

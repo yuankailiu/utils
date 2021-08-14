@@ -1,13 +1,13 @@
 if [ $# -ne 4 ]; then
     echo ""
-    echo "usage: $0 s n w e"
+    echo "usage: $(basename $0) s n w e"
     echo "  s: south"
     echo "  n: north"
     echo "  w: west"
     echo "  e: east"
     echo ""
     echo "example of usage:"
-    echo "$0 -32 -24 -70 -63"
+    echo "$(basename $0) -32 -24 -70 -63"
     echo ""
     exit 1
 fi

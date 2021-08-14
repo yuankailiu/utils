@@ -249,7 +249,7 @@ if __name__ == '__main__':
                 stime = datetime.datetime.strptime(fields[-5], datefmt)
                 ms = mdate + '-' + sdate
 
-                if np.absolute((stime - mtime).total_seconds()) > inps.yr * 365.0 * 24.0 * 3600:
+                if np.absolute((stime - mtime).total_seconds()) > inps.yr_max * 365.0 * 24.0 * 3600:
                     pairs2.append(ms)
                     #print('WARNING: time span of pair {} larger than threshhold, skip this pair...')
                     continue

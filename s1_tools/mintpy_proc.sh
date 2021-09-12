@@ -101,7 +101,7 @@ mkdir -p $ifgmdir/
 
 ## ========================= Folder: reference ============================ ##
 ## Copy the referencedir/ and geom_refenrece/
-if false; then
+if true; then
     cd $pair_dir
     cp -r $refdir $OUTDIR/
     cp -r $geodir $OUTDIR/
@@ -111,7 +111,7 @@ fi
 
 ## ======================== Folder: geom_reference ======================== ##
 ## Geocode LOS file
-if false; then
+if true; then
     cd $pair_dir
     printf "\n>>> Geocode the LOS file \n"
     # Run geocode on ['merged/los.rdr'] using topsApp_geocodeLOS.xml with the same bounding box and DEM
@@ -120,7 +120,7 @@ fi
 
 
 ## Get the geotransform from a vrt file
-if false; then
+if true; then
     cd $pair_dir/merged
     geo_vrt_file='filt_topophase.unw.geo.vrt'
     dem_old_file='dem.crop'
@@ -130,7 +130,7 @@ fi
 
 
 ## Append the geotransform to the dem.crop.vrt
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> Get geotransform from $geo_vrt_file, add to $dem_vrt_file \n"
     l1=$(sed -n '2p' $geo_vrt_file)
@@ -144,7 +144,7 @@ fi
 
 
 ## GDAL translate the DEM file / change variable labels
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> GDAL translate for $dem_old_file \n"
     gdal_translate $dem_vrt_file $dem_old_file -of ISCE
@@ -156,7 +156,7 @@ fi
 
 
 ## Multilook the geometry files if specified
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> Multilook geometry files \n"
     if [ $rlooks -gt 1 -o $alooks -gt 1 ]; then
@@ -180,7 +180,7 @@ fi
 
 
 ## Copy DEM and LOS files across
-if false; then
+if true; then
     cd $pair_dir/merged
     printf "\n>>> Copy DEM and LOS files to output directory \n"
     cp $dem_new_file* $los_new_file* $OUTDIR/$geodir/
@@ -189,7 +189,7 @@ fi
 
 
 ## generate geo-coord lat.geo and lon.geo files
-if false; then
+if true; then
     cd $OUTDIR/$geodir/
     printf "\n>>> Generate geo-coord lat and lon files \n"
     getlalo.py -t $dem_new_file.vrt --out-lat $lat_geo --out-lon $lon_geo
@@ -216,7 +216,7 @@ fi
 
 
 ## generate waterBody file with the same spatial dimension
-if false; then
+if true; then
     cd $OUTDIR/$geodir/
     printf "\n>>> Generate geocoded waterBody file \n"
     getwbd.py --lat $lat_geo --lon $lon_geo -i $waterBody_ori -o $waterBody_new

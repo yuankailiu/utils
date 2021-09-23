@@ -65,7 +65,7 @@ if __name__ == '__main__':
     inps = cmdLineParse()
 
     hdr = '''<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" 
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg width="30cm" height="120cm" version="1.1"
      xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -93,7 +93,7 @@ if __name__ == '__main__':
             width*4,
             imgdir)
         runCmd(cmd)
-        # Can change the compression here if we want 
+        # Can change the compression here if we want
         cmd = 'convert {} -resize 12% {}'.format(
             os.path.join(imgdir, 'out.ppm'),
             os.path.join(imgdir, pair + '.tiff'))

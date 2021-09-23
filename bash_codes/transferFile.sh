@@ -14,7 +14,7 @@ if [ $# -ne 3 ]; then
     echo "usage: `basename $0` file_list dest method"
     echo "  file_list:  a text containing the list of files you want to copy"
     echo "  dest:       the path of destination"
-    echo "  method:     method of manipulation on the files (dry, cp, scp, mv, rsync, msrsync)"
+    echo "  method:     method of manipulation on the files (dry, cp, scp, mv, rsync, msrsync, rm)"
     echo ""
     echo "example of usage:"
     echo "  `basename $0` myfilelist ~/my/destination/folder/ rsync"
@@ -88,6 +88,12 @@ elif [[ $method == msrsync ]]; then
     for ((i=0;i<${#insarpair[@]};i++)); do
         msrsync -P -p 4 --stats ${insarpair[i]} $dest
         printf "msrsync the entire ${insarpair[i]} folder to $dest\n"
+    done
+
+elif [[ $method == rm ]]; then
+    for ((i=0;i<${#insarpair[@]};i++)); do
+        rm -rf ${insarpair[i]}
+        printf "rm the entire ${insarpair[i]} folder to $dest\n"
     done
 
 fi

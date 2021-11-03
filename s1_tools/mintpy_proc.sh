@@ -280,7 +280,7 @@ fi
 
 ## ============================ Folder: baselines ============================== ##
 ## Baselines computation all topsApp pairs
-if false; then
+if true; then
     cd $process_dir
     printf "\n>>> Do baselines and pairs multilook... \n"
     echo "Computing baselines"
@@ -290,7 +290,7 @@ fi
 
 ## ========================== Folder: interferograms =========================== ##
 ## Multilook all topsApp pairs
-if false; then
+if true; then
     cd $process_dir
     echo "Multilooking all pairs; copy files if multilook=1"
     if [ $rlooks -ge 1 -o $alooks -ge 1 ]; then

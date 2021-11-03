@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Ollie Stephenson 2021 April
+# [ Ollie Stephenson 2021 April ]
 # Do a few things to prepare an InSAR track for mintpy processing
 # Prep work before running
 #   Load ISCE
@@ -8,19 +8,30 @@
 #   Choose example pair for the track (don't pick a short one)
 
 # [ Modified by YKL @ 2021 May 9 ]
-# Recommended steps (should be implemented in this script) to take for loading topsApp products to MintPy:
-#   1. Baselines calculation for all dates
-#   2. Reference folder with *.xml files
-#   3. Put all interferograms (can do multilook) into a merged/ folder
-#   4. Take a copy of geom_reference/ (with same crop region, geocoding, and multilook):
-#       (1). hgt.geo, hgt.geo.vrt, hgt.geo.xml (take the dem.crop file, hardwire the lon lat info in the metadata .vrt and .xml)
-#       (2). los.geo, los.geo.vrt, los.geo.xml (take los.rdr.geo file, multilook it)
+# GOAL: Prepare topsApp products for MintPy ingestion
+#   Workflow implemented in this script:
+#       1. Baselines calculation for all dates
+#       2. Reference folder with *.xml files
+#       3. Put all interferograms (can do multilook) into a merged/ folder
+#       4. Take a copy of geom_reference/ (with same crop region, geocoding, and multilook):
+#           (1). hgt.geo, hgt.geo.vrt, hgt.geo.xml (take the dem.crop file, hardwire the lon lat in the .vrt and .xml)
+#           (2). los.geo, los.geo.vrt, los.geo.xml (take los.rdr.geo file, multilook it)
+#       5. Create a waterBody file for the crop region based on the downloaded waterbody
 #
-#   Data directory structure:
-#       process/ ______ merged/ ________ baselines/       _______ YYYYMMDD_YYYYMMDD, ...
-#                                 |_____ referencedir/    _______ IW1/, IW2/, IW3/, IW1.xml, ...
-#                                 |_____ interferograms/  _______ YYYYMMDD_YYYYMMDD, ...
-#                                 |_____ geom_reference/  _______ hgt.geo, los.geo, ...
+#   Dependencies:
+#       - getBaselines.py: Prepare baseline timeseries for a batch of interferograms (need topsStack modules)
+#       - getlalo.py: Read a template geocoded files to get the lon/lat axis
+#       - getLooks.py: Multilook a batch of pairs of interferogram using "looks.py"
+#       - getwbd.py: (from isceobj.Alos2Proc.Alos2ProcPublic import waterBodyRadar)
+#
+#   Directory structure (everything under "process/merged/" is new generated):
+#       process/ ______ merged/ ________   baselines/       _______ YYYYMMDD_YYYYMMDD, ...
+#          |                        |_____ referencedir/    _______ IW1/, IW2/, IW3/, IW1.xml, ...
+#          |__ YYYYMMDD-YYYYMMDD    |_____ interferograms/  _______ YYYYMMDD_YYYYMMDD, ... (copied & multilook ifgrams for mintpy)
+#          |__ YYYYMMDD-YYYYMMDD    |_____ geom_reference/  _______ hgt.geo, los.geo, waterBody, ...
+#          |__        ...
+#          |__        ...
+#          |__  (orignal topsApp ifgram pairs; default foldername is YYYYMMDD-YYYYMMDD)
 
 
 ## Set default arguments

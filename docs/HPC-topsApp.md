@@ -1,11 +1,61 @@
 # Running isce2 topsApp on HPC
+
 This is a note and list of usefull things when running isce2 topsApp on the Caltech campus High Performing Computing (HPC) cluster. Details in this document include:
-  - Installation of isce2 on HPC
-  - Some command line examples
-  - SLURM scripts and submit jobs
-  - Resources usage
-  - Short reports of processing speed and data transfering speed over HPC
-  - Fee
+
+- [Useful commands](#useful-commands)
+- [ISCE2 related links](#isce2-related-links)
+- [Install isce2 on HPC](#install-isce2-on-HPC)
+- [Basics](#basics)
+- [Resource usage & SLURM scripts and submit jobs](#Resource-usage)
+- [Rates](#Rates)
+
+## Useful commands
+
+```bash
+## Check and edit slurm submitted jobs
+
+# check your jobs
+squeue -u username
+
+# check all jobs on hpc
+squeue
+
+# cancel your jobs
+scancel -u username 
+scancel jobid
+
+# show job
+scontrol show jobid=12345678
+
+# hold and release jobs
+scontrol hold jobid
+scontrol release jobid
+
+# requeue a job with the slurm jobfile
+sbatch --requeue run_06_overlap_resample.sbatch
+
+# change dependency
+scontrol update job=20284119 dependency="afterok:20292656"
+
+## Checking Quotas for User and Group
+# your /home/
+mmlsquota -u ykliu --block-size auto central:home
+
+# your /central/scratch/ 
+mmlsquota -u ykliu --block-size auto central:scratch
+
+# your group space
+mmlsquota -j simonsgroup --block-size auto central
+
+## Check resources usage 
+# Check resources used by me
+sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00:00 end=now    -t hours user=ykliu
+
+# Check resources used by the whole group
+sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00:00 end=now    -t hours account=simonsgroup
+```
+
+</br>
 
 
 
@@ -18,7 +68,7 @@ Participate in discussions with the users/developers community!
 
 <br/>
 
-## Reference of "the Experts"
+### Reference to the experts
 
 - @[yunjunz](https://github.com/yunjunz)'s guidance: <https://github.com/yunjunz/conda_envs>
 - @[lijun99](https://github.com/lijun99)'s guidance: <https://github.com/lijun99/isce2-install#linux-with-anaconda3--cmake>
@@ -61,6 +111,7 @@ conda install git cmake cython gdal h5py libgdal pytest numpy fftw scipy basemap
 # Load compilers, as well as cuda/nvcc compiler for GPU modules. 
 # On HPC, CUDA compilers, the most recent version is 11.2,
 # On HPC, use GCC 7.3.0 can work
+# On KAMB, use "module load /home/geomod/apps/rhel7/modules/gcc/7.3.1"
 module load cuda/11.2
 module load gcc/7.3.0
 
@@ -82,6 +133,8 @@ make install
 ## ---------------------- Installation finished ---------------------------
 # Check: 
 # You can see the following directories under ~/tools/isce2/install
+# Try if you can do this properly:
+topsApp.py -h 
 
 ## ----------- All you need to do when you use isce2 next time ------------
 #                 (can put the following into ~/.bashrc)
@@ -96,41 +149,16 @@ export PYTHONPATH=${PYTHONPATH}:${ISCE_ROOT}/install/packages
 export PYTHONPATH=${PYTHONPATH}:${CONDA_PREFIX}/bin
 ```
 
+## Basics
 
-
-## File transferring from KAMB to HPC
+### File transferring from KAMB to HPC
 
 - Average speed:         300~400 Mb/sec
 - Transfer 3T files:     2~3 hours
 
-## How many pairs can HPC run concurrently
+### Wait time
 
-From my current experience, it can have **11–22 jobs** running at different nodes the same time, others are just pending for nodes
-
-note: each job is one pair of SLC
-
-```bash
-## Here I submitted 40 SLC pairs in total, 11 of them got fired. Others are pending
- # I don't know why there is a (Priority) under the NODELIST(REASON)
-
-JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
-  14636041_[11-39]       any  topsApp    ykliu PD       0:00      1 (Priority)
-       14636041_10       any  topsApp    ykliu  R    4:54:59      1 hpc-26-15
-        14636041_9       any  topsApp    ykliu  R    4:55:59      1 hpc-26-21
-        14636041_7       any  topsApp    ykliu  R    4:58:00      1 hpc-25-23
-        14636041_8       any  topsApp    ykliu  R    4:58:00      1 hpc-26-14
-        14636041_6       any  topsApp    ykliu  R    4:59:00      1 hpc-26-18
-        14636041_5       any  topsApp    ykliu  R    4:59:30      1 hpc-26-17
-        14636041_4       any  topsApp    ykliu  R    5:00:00      1 hpc-26-20
-        14636041_3       any  topsApp    ykliu  R    5:02:31      1 hpc-25-24
-        14636041_0       any  topsApp    ykliu  R    5:09:32      1 hpc-26-23
-        14636041_1       any  topsApp    ykliu  R    5:09:32      1 hpc-26-24
-        14636041_2       any  topsApp    ykliu  R    5:09:32      1 hpc-89-37
-```
-
-## Wait time
-
-- 5.5 hours (for long acquisitions)
+- 5.5 hours/pair (for long tracks)
 
 ```bash
 ## steps and wait time of isce2 topsApp.py
@@ -152,7 +180,7 @@ use_steps=
 'esd'                      # 0        min             |
 'rangecoreg'               # 0        min             |
 'fineoffsets'              # 9        min (with GPU)__|
- 
+
 'fineresamp'               # 35       min (resampling;           no gpu)   ⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻⎻|
 'ion'                      # 175      min (resampling;           no gpu)                          |
 'burstifg'                 # 60       min (sing-look igram, coh; no gpu)                          |
@@ -166,7 +194,9 @@ use_steps=
 ## Total runtime: ~5.5 hours for one pair
 ```
 
-## Setting resources in SLURM script
+## Resource usage
+
+### Allocating resources in SLURM script
 
 For each pair
 
@@ -220,7 +250,7 @@ printf ">>>>>>>>>>>> Working on pair: ${insarpair[pairID]} \n"
 cmds/runsteps.sh ${insarpair[pairID]}
 ```
 
-## Resource usage by my account (command: `sreport`)
+### Resource usage by my account (command: `sreport`)
 
 ```bash
 --------------------------------------------------------------------------------
@@ -237,42 +267,8 @@ Usage reported in TRES Hours
   central     simonsgroup     ykliu    Yuan Kai Liu       gres/gpu      2623
 ```
 
-## Individual job information (command: `scontrol show job`)
 
-```bash
-## Below is a report from one of the SLC pair
-	 
-   JobId=14636053 ArrayJobId=14636041 ArrayTaskId=10 JobName=topsApp
-   UserId=ykliu(21896) GroupId=grads(104) MCS_label=N/A
-   Priority=6206 Nice=0 Account=simonsgroup QOS=normal
-   JobState=RUNNING Reason=None Dependency=(null)
-   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0
-   RunTime=05:00:25 TimeLimit=06:00:00 TimeMin=N/A
-   SubmitTime=2021-04-23T03:01:41 EligibleTime=2021-04-23T03:01:41
-   AccrueTime=2021-04-23T03:01:41
-   StartTime=2021-04-23T03:16:38 EndTime=2021-04-23T09:16:38 Deadline=N/A
-   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2021-04-23T03:16:38
-   Partition=any AllocNode:Sid=login2:230052
-   ReqNodeList=(null) ExcNodeList=(null)
-   NodeList=hpc-26-15
-   BatchHost=hpc-26-15
-   NumNodes=1 NumCPUs=28 NumTasks=1 CPUs/Task=28 ReqB:S:C:T=0:0:*:*
-   TRES=cpu=28,mem=224G,node=1,billing=28,gres/gpu=1
-   Socks/Node=* NtasksPerN:B:S:C=1:0:*:* CoreSpec=*
-   MinCPUsNode=28 MinMemoryCPU=8G MinTmpDiskNode=0
-   Features=(null) DelayBoot=00:00:00
-   OverSubscribe=OK Contiguous=0 Licenses=(null) Network=(null)
-   Command=/central/groups/simonsgroup/ykliu/ykliu/aqaba/a087/process/s1a/submit_topsApp_0.sh
-   WorkDir=/central/groups/simonsgroup/ykliu/ykliu/aqaba/a087/process/s1a
-   StdErr=/central/groups/simonsgroup/ykliu/ykliu/aqaba/a087/process/s1a/slurm-14636041_10.out
-   StdIn=/dev/null
-   StdOut=/central/groups/simonsgroup/ykliu/ykliu/aqaba/a087/process/s1a/slurm-14636041_10.out
-   Power=
-   TresPerNode=gpu:1
-   MailUser=ykliu@caltech.edu MailType=BEGIN,END,FAIL
-```
-
-## Disk usage by me on HPC (command: `mmlsquota`)
+### Disk usage by me on HPC (command: `mmlsquota`)
 
 I am not putting all the files and running them under the group space `simonsgroup/`
 
@@ -303,7 +299,7 @@ Each pair will take 3.3 G of disk space after deleting unnecessary files
 
 ```bash
 ## Here is a list of things Cunren suggests that we can delete after finishing all processing
- 
+
  30G   fine_coreg/                             # can regenerate using GPUs
  58G   fine_interferogram/                     # can regenerate using GPUs
  30G   fine_offsets/                           # can regenerate using GPUs
@@ -312,7 +308,6 @@ Each pair will take 3.3 G of disk space after deleting unnecessary files
  30G   ion/upper/fine_interferogram/           # ion burst
  15G   ion/ion_burst/                          # ion burst
 ```
-
 
 ## Rates
 
@@ -330,147 +325,32 @@ Usage reported in TRES Hours
   central     simonsgroup     ykliu    Yuan Kai Liu            cpu     73440
   central     simonsgroup     ykliu    Yuan Kai Liu       gres/gpu      2623
 ```
+
 Total computing units = cpu + 10 * gpu = 290246
 
 Total fee = 290246 * 0.014 = $4,063
 
 ### Rate Structure
+
 Latest rates: <https://www.hpc.caltech.edu/rates>
 
 Total rates are broken into compute hours and additional storage costs. Rates are based on a tiered structure. Tiers are reset every fiscal year.
 
-#### Core Hour Calculations	
+#### Core Hour Calculations
 
-|Aggregate Spend	| Fee per compute unit|
-|-----------------|---------------------|
-| ≤ $6,500	      |   $0.014            |
-| $6,501 - 24,000 |   $0.008            |
-| > $24,000	      |   $0.005            |
+| Aggregate Spend | Fee per compute unit |
+| --------------- | -------------------- |
+| ≤ $6,500        | $0.014               |
+| $6,501 - 24,000 | $0.008               |
+| > $24,000       | $0.005               |
 
-#### Compute Units	
+#### Compute Units
+
 CPU = 1 computing unit
 GPU = 10 computing units
 
-#### Storage	
+#### Storage
+
 Group Storage - 10TB initial allocation, up to 30TB available at no charge upon request from PI.
 $6.40/TB/Month additional beyond the free allocation.
 
-
-## Useful commands
-
-```bash
-## Check and edit slurm submitted jobs
-
-# check your jobs
-squeue -u username
-
-# check all jobs on hpc
-squeue
-
-# cancel your jobs
-scancel -u username 
-scancel jobid
-
-# hold and release jobs
-scontrol hold jobid
-scontrol release jobid
-
-## Checking Quotas for User and Group
-# your /home/
-mmlsquota -u ykliu --block-size auto central:home
-
-# your /central/scratch/ 
-mmlsquota -u ykliu --block-size auto central:scratch
-
-# your group space
-mmlsquota -j simonsgroup --block-size auto central
-
-## Check resources usage 
-# Check resources used by me
-sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00:00 end=now    -t hours user=ykliu
-
-# Check resources used by the whole group
-sreport  -T gres/gpu,cpu   cluster accountutilizationbyuser start=01/01/21T00:00:00 end=now    -t hours account=simonsgroup
-```
-
-<br \>
-
-
-
-## Supplementary:
-
-
-
-#### Check isce output, how many threads are actually used
-
-```bash
-
-## topo
-
-Max threads used: 4
-#...
------------------- INITIALIZING GPU TOPO ------------------
-
-    Loading slantrange and doppler data...
-    Allocating host and general GPU memory...
-    Copying general memory to GPU...
-    Allocating block memory (99953172 pixels per image)...
-    (NOTE: There will be 12 'empty' threads per image block).
-
-## fineoffsets
-
-Geo2rdr executing on 4 threads...
-#...
-Copying Orbit and Poly1d data to compatible arrays...
-Calculating relevant GPU parameters...
-NOTE: GPU will process image in 1 runs of 1495 lines
-
-  ------------------ INITIALIZING GPU GEO2RDR ------------------
-
-    Loading relevant geometry product data...
-    Allocating memory...
-    Done.
-    Copying data to GPU...
-    (NOTE: There will be 12 'empty' threads).
-    Starting GPU Geo2rdr for run 0...
-    GPU finished run 0 in 0.154889 s.
-    Copying memory back to host...
-    GPU finished run 0 (with memory copies) in 0.607357 s.
-    Cleaning device memory and returning to main Geo2rdr function...
-  Writing run 0 out asynchronously to image files...
-  Finished writing to files!
-
-  ------------------ EXITING GPU GEO2RDR ------------------
-
-Finished!
-
-## fineresamp
-
-Number of threads:            4
-
-## geocode
-API open (WR): merged/dem.crop
-API open (WR): merged/filt_topophase.unw.geo
-GDAL open (R): merged/filt_topophase.unw.vrt
-GDAL open (R): /home/ykliu/simonsgroup/ykliu/aqaba/a087/dem_3_arcsec/demLat_N26_N34_Lon_E033_E038.dem.wgs84.vrt
- Using nearest neighbor interpolation
- threads           4
- Starting Acquisition time:    56364.376972999999     
- Stop Acquisition time:    56466.753954521497     
- Azimuth line spacing in secs:    1.0277781499999991E-002
- Near Range in m:    799429.57602867822     
- Far  Range in m:    959470.49330962088     
- Range sample spacing in m:    46.591242294306461     
- Input Lines:         9962
- Input Width:         3436
- reading interferogram ...
- Geocoded Lines:          9601
- Geocoded Samples:        6001
- Initializing Nearest Neighbor Interpolator
- geocoding on            4  threads...
- Number of pixels with outside DEM:          6000
- Number of pixels outside the image:     32647905
- Number of pixels with valid data:       23439710
- elapsed time =    44.7890625      seconds
- Using nearest neighbor interpolation
-```

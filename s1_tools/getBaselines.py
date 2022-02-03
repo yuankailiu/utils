@@ -42,12 +42,16 @@ def cmdLineParse():
             2. load mintpy from path: \n \
                 This is just to use ptime function to convert YYMMDD to YYYYMMDD format \n'
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-w', dest='workdir', type=str, default='.',
+            help = 'current working directory. (default: %(default)s)')
     parser.add_argument('-d', dest='dir', type=str, default='./baselines',
             help = 'output directory for the baselines. (default: %(default)s)')
     parser.add_argument('-r', dest='reference_dir', type=str, default='referencedir',
             help = 'default directory name for the reference acquisition. (default: %(default)s)')
     parser.add_argument('-s', dest='secondary_dir', type=str, default='secondarydir',
             help = 'default directory name for the secondary acquisition. (default: %(default)s)')
+    parser.add_argument('-m', dest='method', type=str, default='single',
+            help = 'reference_secondary pairing. (default: %(default)s)')
     parser.add_argument('-p', dest='subproc_opt', type=str, default='popen',
             help = 'choose either `run` or `popen`. (default: %(default)s)')
 
@@ -64,48 +68,66 @@ if __name__ == '__main__':
     inps = cmdLineParse()
 
     outdir = inps.dir
+    method = inps.method
+    workdir = inps.workdir
     current_path = os.path.abspath(os.getcwd())
     print('Read acquisition dates from pair directories in the working path: %s' % current_path)
 
-    pairs = glob.glob('*-*/')
-    dates = []
+    pairs = glob.glob('{}/*-*'.format(workdir))
+    refs = []
+    secs = []
     for i in range(len(pairs)):
-        reference = pairs[i].split('-')[0]
-        secondary = pairs[i].split('-')[1][:-1]
-        dates.append(reference)
-        dates.append(secondary)
-    dates = list(set(dates))
-    dates.sort()
+        ref = pairs[i].split('/')[-1].split('-')[0]
+        sec = pairs[i].split('/')[-1].split('-')[1]
+        refs.append(ref)
+        secs.append(sec)
 
-    reference = dates[0]
+    if method == 'single':
+        secs = list(set(refs+secs))
+        secs.sort()
+        refs = list([secs[0]] * (len(secs)-1))
+        secs = list(np.array(secs)[1:])
+        print('Total number of dates: %d' % int(len(secs)+1))
+        print('Set the first date as the common reference for baseline computation: %s' % refs[0])
+        res = "\n".join("{} {}".format(x, y) for x, y in zip(refs, secs))
+        print(res)
 
-    print('Total number of dates: %d' % len(dates))
-    print('Set the first date as the common reference for baseline computation: %s' % reference)
+    elif method == 'pairwise':
+        refs = list(refs)
+        secs = list(secs)
+        print('Total number of pairs: %d' % len(secs))
+        print('Pairwise reference_secondary for baseline computation')
+        res = "\n".join("{} {}".format(x, y) for x, y in zip(refs, secs))
+        print(res)
+
+
     print('Start making baseline folders, compute baselines...')
     print('Output files will be saved under {}/*_*'.format(outdir))
     print('subprocess option: {}'.format(inps.subproc_opt))
 
     n = 0
-    for i in range(1,len(dates[:])):
+    for i in range(len(secs)):
         start_dt = dt.now()
 
-        secondary = dates[i]
+        reference = refs[i]
+        secondary = secs[i]
         baseline_pair = '{}_{}'.format(ptime.yyyymmdd(reference), ptime.yyyymmdd(secondary))
         baseline_path = '{}/{}'.format(outdir, baseline_pair)
 
         # Get paths of ref and sec acquisitions for this baseline pair
-        p_ref = [p for p in pairs if reference in p][0][:-1]
-        p_sec = [p for p in pairs if secondary in p][0][:-1]
-        if p_ref.split('-').index(reference) == 0:
+        p_ref = [p for p in pairs if reference in p][0]
+        p_sec = [p for p in pairs if secondary in p][0]
+
+        if p_ref.split('/')[-1].split('-').index(reference) == 0:
             pos_ref=inps.reference_dir
-        elif p_ref.split('-').index(reference) == 1:
+        elif p_ref.split('/')[-1].split('-').index(reference) == 1:
             pos_ref=inps.secondary_dir
-        if p_sec.split('-').index(secondary) == 0:
+        if p_sec.split('/')[-1].split('-').index(secondary) == 0:
             pos_sec=inps.reference_dir
-        elif p_sec.split('-').index(secondary) == 1:
+        elif p_sec.split('/')[-1].split('-').index(secondary) == 1:
             pos_sec=inps.secondary_dir
-        refpath = './{}/{}'.format(p_ref, pos_ref)
-        secpath = './{}/{}'.format(p_sec, pos_sec)
+        refpath = '{}/{}'.format(p_ref, pos_ref)
+        secpath = '{}/{}'.format(p_sec, pos_sec)
 
         # Make baseline directory and have a baseline filename
         print('  ', baseline_pair)

@@ -1,7 +1,7 @@
 # This is a chirp coding example
 print('This is a chirp waveform example.')
 import numpy as np
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 # Parameters definition
 Amp = 1

@@ -1,5 +1,5 @@
 # This is a only practice of how to use Python, numpy sort of things.
-# Plot a deformation function taken from Paul Segall's book: 
+# Plot a deformation function taken from Paul Segall's book:
 # "EARTHQUAKE AND VOLCANO DEFORMATION", 2010, page 40, eq(2.32).
 # Task:
 #       1) Plot the function and add Gaussian noise on it, creating a noisy observation.
@@ -7,7 +7,7 @@
 
 
 import numpy as np
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 
 # Define a deformation function at the surface
@@ -57,7 +57,7 @@ for si in sz:
 		j = 0
 		for xi in x:
 			err[j] = np.abs(u_obs[j] - (si/np.pi) * np.arctan(xi/di))
-			j = j+ 1 
+			j = j+ 1
 		ERRi = np.sum(err)
 		if ERRi < ERR:
 			ERR = ERRi

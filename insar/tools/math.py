@@ -63,12 +63,12 @@ def disp_arctan(X, s, d):
     s   slip rate
     d   locking depth
     """
-	U = np.zeros(X.shape)
-	i = 0
-	for x1 in X:
-		U[i] = (s/np.pi) * np.arctan(x1/d)
-		i = i + 1
-	return U
+    u = np.zeros(X.shape)
+    i = 0
+    for x1 in X:
+        u[i] = (s/np.pi) * np.arctan(x1/d)
+        i = i + 1
+    return u
 
 
 def gridsearch_disp(d=1, s=5):

@@ -5,66 +5,74 @@
 #       2. whether or not start_date
 #
 # Save output velocity files into different directories
-# 
+#
 # + Need to reference your ERA5.h5 and SET.h5
 # YKL @ 2020-08-17
-# updated @ 2021-05-19
+# updated @ 2021-09-19
 # --------------------------------------------------------------
 
-refdate=20160203
-refx=470
-refy=735
+# =============== Read defined variables from json file ==================
+my_json="./params.json"
+declare -A dic
+while IFS="=" read -r key value
+do
+    dic[$key]="$value"
+done < <(jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' $my_json)
+# =============== ===================================== ==================
+# Get parameters
+proc_home="${dic['proc_home']}"
+config=smallbaselineApp.cfg
+veloDir="${proc_home}/${dic['velo_dir']}"
+refdate=${dic['ref_date']}
+refla=${dic['ref_lat']}
+reflo=${dic['ref_lon']}
+velo_model=${dic['velo_model']}
 
-tsfile=timeseries_SET_ERA5_demErr.h5
-tsfile_rl=timeseries_SET_ERA5_demErr_rampl.h5
-tsfile_rq=timeseries_SET_ERA5_demErr_rampq.h5
-weather=inputs/ERA5.h5
-setmodel=inputs/SET.h5
-ionotec=inputs/TEC.h5
-templ=smallbaselineApp.cfg
-#startdate="20160101"
-periods="1.0 0.5"
-steps=""
-WLS=""
 
-
-# common arguments (template + ref-yx + ref-date)
-arg_common="-t ${templ} --ref-yx ${refy} ${refx} --ref-date ${refdate}"
-explog="--exp 20160910 90 --exp 20171014 60.4 300.4 --log 20171026 200.7 --log 20191010 60 300"
-
-# output path
-veloDir=velocity_out
-
+# print information to terminal
 printf "\n"
 printf "Velocity estimation using temporal functions \n"
-printf "Reference date: $refdate    Ref_X: $refx    Ref_Y: $refy \n"
-printf "Periods: $periods   Steps: $steps   WLS: $WLS \n"
+printf "Reference date: $refdate"
+printf "Ref_lat, Ref_lon: $refla $reflo \n"
+printf "Velocity models: $velo_model \n"
 printf "velocity output path: $veloDir \n"
+mkdir -p ${veloDir}
 
+# Define file names to be operated
+ts1=timeseries_SET_ERA5_demErr.h5
+ts2=timeseries_SET_ERA5_Ion_demErr.h5
+ts1lr=timeseries_SET_ERA5_demErr_rampl.h5
+ts1qr=timeseries_SET_ERA5_demErr_rampq.h5
+ts2lr=timeseries_SET_ERA5_Ion_demErr_rampl.h5
+ts2qr=timeseries_SET_ERA5_Ion_demErr_rampq.h5
+TRO=inputs/ERA5.h5
+SET=inputs/SET.h5
+ION=inputs/timeseriesIon.h5
+TEC=inputs/TEC.h5
 
 # Run timeseries2velocity.py
-# Output files naming: Rl=linear deramp; Rq=quadratic deramp;  P=periodic; S=step; W=weighted
-if true; then
-    mkdir -p ${veloDir}
+# Output files naming:
+#       1  = velocity w/o iono correction
+#       2  = velocity w/  iono correction
+#       lr = apply linear    deramp
+#       qr = apply quadratic deramp
+#       vl = with only linear velo fit
+ts2velo=" timeseries2velocity.py -t ${config} --ref-lalo ${refla} ${reflo} --ref-date ${refdate} "
 
-    #timeseries2velocity.py ${tsfile}   ${arg_common}                        -o ${veloDir}/velocity.h5
-    #timeseries2velocity.py ${tsfile}   ${arg_common} --periodic ${periods}  -o ${veloDir}/velocity_P.h5
+$ts2velo  ${ts1}    ${velo_model}  -o ${veloDir}/velocity1.h5
+$ts2velo  ${ts2}    ${velo_model}  -o ${veloDir}/velocity2.h5
 
-    #timeseries2velocity.py ${tsfile_rl} ${arg_common}                       -o ${veloDir}/velocity_Rl.h5
-    #timeseries2velocity.py ${tsfile_rl} ${arg_common} --periodic ${periods} -o ${veloDir}/velocity_RlP.h5
+$ts2velo  ${ts1lr}  ${velo_model}  -o ${veloDir}/velocity1lr.h5
+$ts2velo  ${ts1qr}  ${velo_model}  -o ${veloDir}/velocity1qr.h5
 
-    timeseries2velocity.py ${tsfile_rl} ${arg_common} --periodic ${periods} ${explog} -o ${veloDir}/velocity_RlP_explog.h5
+$ts2velo  ${ts2lr}  ${velo_model}  -o ${veloDir}/velocity2lr.h5
+$ts2velo  ${ts2qr}  ${velo_model}  -o ${veloDir}/velocity2qr.h5
 
+$ts2velo  ${TRO}                   -o ${veloDir}/velocityERA5_vl.h5
+$ts2velo  ${TRO}    ${velo_model}  -o ${veloDir}/velocityERA5.h5
 
-    #timeseries2velocity.py ${tsfile_rq} ${arg_common}                       -o ${veloDir}/velocity_Rq.h5
-    #timeseries2velocity.py ${tsfile_rq} ${arg_common} --periodic ${periods} -o ${veloDir}/velocity_RqP.h5
+$ts2velo  ${SET}                   -o ${veloDir}/velocitySET_vl.h5
+$ts2velo  ${SET}    ${velo_model}  -o ${veloDir}/velocitySET.h5
 
-    #timeseries2velocity.py ${weather}  ${arg_common}                        -o ${veloDir}/velocityERA5.h5
-    #timeseries2velocity.py ${weather}  ${arg_common} --periodic ${periods}  -o ${veloDir}/velocityERA5_P.h5
-
-    #timeseries2velocity.py ${setmodel} ${arg_common}                        -o ${veloDir}/velocitySET.h5
-    #timeseries2velocity.py ${setmodel} ${arg_common} --periodic ${periods}  -o ${veloDir}/velocitySET_P.h5
-
-    ##timeseries2velocity.py ${ionotec}  ${arg_common}                        -o ${veloDir}/velocityTEC.h5
-    ##timeseries2velocity.py ${ionotec}  ${arg_common} --periodic ${periods}  -o ${veloDir}/velocityTEC_p.h5
-fi
+$ts2velo  ${ION}                   -o ${veloDir}/velocityIon_vl.h5
+$ts2velo  ${ION}    ${velo_model}  -o ${veloDir}/velocityIon.h5

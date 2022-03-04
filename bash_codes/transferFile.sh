@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ## Warning: this script can move or copy the entire parent folder of the specified pair:
 ## Watch out the list of files you specified!!
 ## execute at process/
@@ -33,15 +35,15 @@ file_list=$1
 dest=$2
 method=$3
 
-mapfile -t insarpair < $file_list
+mapfile -t file_lists < $file_list
 
 
 ############ Asking for confirmation ########
 
 echo "Copy these directories to $dest?"
 
-for ((i=0;i<${#insarpair[@]};i++)); do
-    echo " ${insarpair[i]}"
+for ((i=0;i<${#file_lists[@]};i++)); do
+    echo " ${file_lists[i]}"
 done
 
 
@@ -59,41 +61,41 @@ if [[ $method == dry ]]; then
     printf "This is a dry run; no action is done\n"
 
 elif [[ $method == cp ]]; then
-    for ((i=0;i<${#insarpair[@]};i++)); do
-        cp -r ${insarpair[i]} $dest
-        printf "cp the entire ${insarpair[i]} folder to $dest\n"
+    for ((i=0;i<${#file_lists[@]};i++)); do
+        cp -r ${file_lists[i]} $dest
+        printf "cp the entire ${file_lists[i]} folder to $dest\n"
     done
 
 elif [[ $method == scp ]]; then
-    for ((i=0;i<${#insarpair[@]};i++)); do
-        scp -r ${insarpair[i]} $dest
-        printf "scp the entire ${insarpair[i]} folder to $dest\n"
+    for ((i=0;i<${#file_lists[@]};i++)); do
+        scp -r ${file_lists[i]} $dest
+        printf "scp the entire ${file_lists[i]} folder to $dest\n"
     done
 
 
 elif [[ $method == mv ]]; then
-    for ((i=0;i<${#insarpair[@]};i++)); do
-        mv ${insarpair[i]} $dest
-        printf "mv the entire ${insarpair[i]} folder to $dest\n"
+    for ((i=0;i<${#file_lists[@]};i++)); do
+        mv ${file_lists[i]} $dest
+        printf "mv the entire ${file_lists[i]} folder to $dest\n"
     done
 
 elif [[ $method == rsync ]]; then
-    for ((i=0;i<${#insarpair[@]};i++)); do
-        rsync ${insarpair[i]} $dest
-        printf "rsync the entire ${insarpair[i]} folder to $dest\n"
+    for ((i=0;i<${#file_lists[@]};i++)); do
+        rsync ${file_lists[i]} $dest
+        printf "rsync the entire ${file_lists[i]} folder to $dest\n"
     done
 
 
 elif [[ $method == msrsync ]]; then
-    for ((i=0;i<${#insarpair[@]};i++)); do
-        msrsync -P -p 4 --stats ${insarpair[i]} $dest
-        printf "msrsync the entire ${insarpair[i]} folder to $dest\n"
+    for ((i=0;i<${#file_lists[@]};i++)); do
+        msrsync -P -p 4 --stats ${file_lists[i]} $dest
+        printf "msrsync the entire ${file_lists[i]} folder to $dest\n"
     done
 
 elif [[ $method == rm ]]; then
-    for ((i=0;i<${#insarpair[@]};i++)); do
-        rm -rf ${insarpair[i]}
-        printf "rm the entire ${insarpair[i]} folder to $dest\n"
+    for ((i=0;i<${#file_lists[@]};i++)); do
+        rm -rf ${file_lists[i]}
+        printf "rm the entire ${file_lists[i]} folder to $dest\n"
     done
 
 fi

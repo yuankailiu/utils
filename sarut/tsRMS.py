@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from datetime import datetime, timedelta
-from mintpy.utils import readfile, utils as ut, plot as pp
+from mintpy.utils import utils as ut, plot as pp
 
 
 def cmdLineParse():

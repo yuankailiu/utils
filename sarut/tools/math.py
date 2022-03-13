@@ -6,7 +6,7 @@
 # --------------------------------------------------------------
 
 # Recommended usage:
-#   import sarut.tools.plot as sarplt
+#   import sarut.tools.math as sarmath
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -129,3 +129,45 @@ def gridsearch_disp(d=1, s=5):
     plt.plot(x, uz)
     plt.xlabel('Distance from fault (x)'); plt.ylabel('Displacement (u)'); plt.axis('tight'); plt.title('Interseismic deformation')
     plt.show()
+
+
+
+def networking(friends, sortbylen=True):
+    # person's friendship circle (network) is a person themselves
+    # plus friendship circles of all their direct friends
+    # minus already seen people
+    # https://stackoverflow.com/questions/15331877/creating-dictionaries-of-friends-that-know-other-friends-in-python
+    def friends_graph(people_all, friends):
+        # graph of friends (adjacency lists representation)
+        G = {p: [] for p in people_all} # person -> direct friends list
+        for friend in friends:
+            for p in friend:
+                f_list = list(friend)
+                f_list.remove(p)
+                G[p].extend(f_list)
+        return G
+
+    def friendship_circle(person): # a.k.a. connected component
+        seen.add(person)
+        yield person
+        for friend in direct_friends[person]:
+            if friend not in seen:
+                yield from friendship_circle(friend)
+
+    people_all = list(set(sum(friends, [])))
+    direct_friends = friends_graph(people_all, friends)
+    seen = set() # already seen people
+
+    # group people into friendship circles
+    circs = (friendship_circle(p) for p in people_all if p not in seen)
+
+    # convert generator to a list with sublist(s)
+    circ_lists = []
+    for circ in circs:
+        member = sorted(list(circ))
+        circ_lists.append(member)
+
+    if sortbylen:
+        circ_lists.sort(key=len, reverse=True)
+
+    return circ_lists

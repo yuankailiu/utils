@@ -475,7 +475,7 @@ def plot_tsprofs(profDir):
 
 
 # Plot one slice of the time-series
-def imageSlider(ts_file, dset='timeseries-20150304', mask=mask_file, points=None, return_v=False):
+def imageSlider(ts_file, dset='timeseries-20150304', mask=None, points=None, return_v=False):
     import matplotlib.gridspec as gridspec
     plt.rcParams.update({'font.size': 16})
 
@@ -1212,7 +1212,7 @@ def plot_velocitymap(data, pts=None, folder='velocity', title='Velocity', fig_dp
 # Plot transections
 # ---------------------------------------------------------
 
-def plot_transec(data, start_lalo, end_lalo, pts=None, mask_file=mask_file, folder='velocity', title='Velocity',
+def plot_transec(data, start_lalo, end_lalo, pts=None, mask_file=None, folder='velocity', title='Velocity',
                  fig_dpi=300, vmin=-20, vmax=20, tvmin=-5, tvmax=5, svmin=-0.5, svmax=0.5):
     import matplotlib.gridspec as gridspec
     from matplotlib import colors
@@ -2006,7 +2006,7 @@ def plot_slcproc(s1ver_file):
 # 3. If the weather model correlation agrees with the observation?
 # 4. Is there any spatial variance in the elevation-phase correlation (e.g., latitude dependent, coastal or inland features)?
 
-def plot_ele_atm(ts_file, atm_file, mask_file=mask_file, fname='', plotdate='all', withshift=1, noshow=True):
+def plot_ele_atm(ts_file, atm_file, mask_file=None, fname='', plotdate='all', withshift=1, noshow=True):
     if plotdate == 'all':
         from mintpy import info
         datelist = info.print_date_list(ts_file)

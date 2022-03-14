@@ -99,8 +99,12 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     # Figure Setting
     if 'fontsize'    not in p_dict.keys():  p_dict['fontsize']    = 12
     if 'linewidth'   not in p_dict.keys():  p_dict['linewidth']   = 2
+    if 'linewidths'  not in p_dict.keys():  p_dict['linewidths']  = 2
+    if 'linecolor'   not in p_dict.keys():  p_dict['linecolor']   = False
     if 'markercolor' not in p_dict.keys():  p_dict['markercolor'] = 'orange'
     if 'markersize'  not in p_dict.keys():  p_dict['markersize']  = 12
+    if 'edgecolor'   not in p_dict.keys():  p_dict['edgecolor']   = 'k'
+    if 'transparency' not in p_dict.keys():  p_dict['transparency']   = 0.7
 
     # For colorful display of coherence
     if 'cohList'     not in p_dict.keys():  p_dict['cohList']     = None
@@ -126,7 +130,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
         raise ValueError('unrecognized colormap input: {}'.format(p_dict['colormap']))
 
     cohList = p_dict['cohList']
-    transparency = 0.7
+    transparency = p_dict['transparency']
 
     # Date Convert
     dateList = ptime.yyyymmdd(sorted(dateList))
@@ -189,9 +193,9 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
         y_list = [pbaseList[i] for i in idx_date_keep]
         if isinstance(p_dict['markercolor'], str):
             ax.plot(x_list, y_list, 'ko', alpha=0.7, ms=p_dict['markersize'], mfc=p_dict['markercolor'])
-        elif isinstance(p_dict['markercolor'], (list, tuple, np.ndarray)):
-            ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], cmap=p_dict['colormap'], alpha=0.7, edgecolors='k')
-
+        else:
+            ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], cmap=p_dict['colormap'],
+                        alpha=0.7, edgecolors=p_dict['edgecolor'], linewidths=p_dict['linewidths'])
     if idx_date_drop:
         x_list = [dates[i] for i in idx_date_drop]
         y_list = [pbaseList[i] for i in idx_date_drop]
@@ -224,6 +228,8 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
             val = cohList[date12List.index(date12)]
             val_norm = (val - disp_min) / (disp_max - disp_min)
             ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=cmap(val_norm))
+        elif p_dict['linecolor'] is not False:
+            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=p_dict['linecolor'])
         else:
             ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c='k')
 

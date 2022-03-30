@@ -15,19 +15,18 @@ refy=998
 refla=29.54435
 reflo=36.08216
 
-tmCoh_mask='../../maskTempCoh_high2.h5'
+tmCoh_mask='../../maskTempCoh_high.h5'
 water_mask='../../waterMask.h5'
 dem_file='../../inputs/geometryGeo.h5'
-dem_file='/home/ykliu/marmot-nobak/aqaba/broad_dem/dem_resamp_d021/d021.dem'
 
 view='view.py --nodisplay --dpi 300 -c RdYlBu_r --update'
 roi=" --sub-lon $xmin $xmax --sub-lat $ymin $ymax "
 #roi=' '
 opt=" --dem $dem_file --alpha 0.6 --dem-nocontour --shade-exag 0.05 --mask $tmCoh_mask -u mm $roi --ref-lalo ${refla} ${reflo} "
 
-v1=' --vlim -4  4  '   # velocity field [mm/yr]
-v2=' --vlim -2  2   '   # velocity field [mm/yr]
-v3=' --vlim -4  4 '   # velocity field [mm/yr]
+v1=' --vlim -13  13  '   # velocity field [mm/yr]
+v2=' --vlim -3   3   '   # velocity field [mm/yr]
+v3=' --vlim -5   5   '   # velocity field [mm/yr]
 
 ## First do deramp and save the ramp files
 ramp_type=linear
@@ -47,6 +46,21 @@ f='velocity2_ramp.h5     velocity';   $view $f $opt $v3 -o vel2_ramp.png        
 f='velocity2_noramp.h5   velocity';   $view $f $opt $v2 -o vel2_noramp.png        --figtitle vel2_noramp
 f='velocityIon_ramp.h5   velocity';   $view $f $opt $v1 -o velIon_ramp.png        --figtitle velIon_ramp
 f='velocityIon_noramp.h5 velocity';   $view $f $opt $v2 -o velIon_noramp.png      --figtitle velIon_noramp
+
+## these need to be changed to first use add.py diff.py, then rename it to *pred
+## velocityIon_multiply1.383_plus0.001011.h5
+slope=1.383
+intcp=0.001011
+image_math.py velocityIon.h5         '*'   $slope   -o  velocityIon_tmp.h5
+image_math.py velocityIon_tmp.h5     '+'   $intcp   -o  velocityIon_scaled.h5
+rm -rf velocityIon_tmp.h5
+diff.py        velocity1.h5       velocityIon_scaled.h5     -o  velocity2_pred.h5
+remove_ramp.py velocity2_pred.h5   -s ${ramp_type} -m ${tmCoh_mask} --save-ramp-coeff -o velocity2_pred_noramp.h5
+diff.py        velocity2_pred.h5  velocity2_pred_noramp.h5  -o  velocity2_pred_ramp.h5
+
+f='velocity2_pred.h5        velocity';   $view $f $opt $v3 -o vel2_pred.png          --figtitle vel2_pred
+f='velocity2_pred_ramp.h5   velocity';   $view $f $opt $v2 -o vel2_pred_ramp.png     --figtitle vel2_pred_ramp
+f='velocity2_pred_noramp.h5 velocity';   $view $f $opt $v2 -o vel2_pred_noramp.png   --figtitle vel2_pred_noramp
 
 
 mkdir -p $picdir

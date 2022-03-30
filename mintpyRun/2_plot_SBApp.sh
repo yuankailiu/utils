@@ -9,14 +9,14 @@
 
 ## Change to 0 if you do not want to re-plot loaded dataset again
 plot_network=1
-plot_key_files=0
-plot_loaded_data=0
-plot_loaded_data_aux=0
-plot_timeseries=0
+plot_key_files=1
+plot_loaded_data=1
+plot_loaded_data_aux=1
+plot_timeseries=1
 plot_TEC_ts=0
-plot_geocoded_data=0
-plot_the_rest=0
-move_and_copy=0
+plot_geocoded_data=1
+plot_the_rest=1
+move_and_copy=1
 
 
 # =============== Read defined variables from json file ==================
@@ -60,7 +60,7 @@ fi
 
 
 ## common view.py option for all files
-view='view.py --nodisplay --dpi 150 --nrows 3 --ncols 8 --update '
+view='view.py --nodisplay --dpi 300 --nrows 3 --ncols 8 --update --ram 8.0 '
 
 
 ## plot the ifgram network

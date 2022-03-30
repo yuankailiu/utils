@@ -7,6 +7,7 @@ from mintpy.objects import ifgramStack
 
 import sarut.tools.plot as sarplt
 
+# Please ignore this script. This is obsolete
 # fonts
 from matplotlib import font_manager
 font_dirs = ['/net/kraken/bak/ykliu/fonts']
@@ -132,4 +133,4 @@ print(' ======= Acquisitions with only 2 pairs =======')
 _ = dates_with_Npairs(date_list, npairs, 2)
 print(' ======= Acquisitions with only 3 pairs =======')
 _ = dates_with_Npairs(date_list, npairs, 3)
-# %%
+

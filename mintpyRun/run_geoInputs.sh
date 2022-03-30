@@ -6,6 +6,7 @@ cd inputs/
 
 
 echo "Geocode inputs/geometryRadar.h5 inputs/ifgramStack.h5 to geo-coordinates"
+mkdir -p geo
 geocode.py ./*.h5 -t ${config} --outdir ./geo/ --update
 
 

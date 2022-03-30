@@ -21,8 +21,8 @@ done < <(jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' $my_json)
 # =============== ===================================== ==================
 # Get parameters
 proc_home="${dic['proc_home']}"
-config=smallbaselineApp.cfg
 veloDir="${proc_home}/${dic['velo_dir']}"
+config=smallbaselineApp.cfg
 refdate=${dic['ref_date']}
 refla=${dic['ref_lat']}
 reflo=${dic['ref_lon']}
@@ -31,11 +31,11 @@ velo_model=${dic['velo_model']}
 
 # print information to terminal
 printf "\n"
-printf "Velocity estimation using temporal functions \n"
-printf "Reference date: $refdate"
-printf "Ref_lat, Ref_lon: $refla $reflo \n"
-printf "Velocity models: $velo_model \n"
-printf "velocity output path: $veloDir \n"
+printf " Velocity estimation using temporal functions \n "
+printf " Reference date: $refdate \n "
+printf " Ref_lat, Ref_lon: $refla $reflo \n "
+printf " Velocity models: $velo_model \n "
+printf " velocity output path: $veloDir \n "
 mkdir -p ${veloDir}
 
 # Define file names to be operated

@@ -29,6 +29,8 @@ then
     exit 0
 fi
 
+steps=$1
+
 # =============== Read defined variables from json file ==================
 my_json="./params.json"
 declare -A dic
@@ -41,16 +43,23 @@ done < <(jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' $my_json)
 proc_home="${dic['proc_home']}"
 config="${proc_home}/${dic['config']}"
 ifgStack="${proc_home}/${dic['ifgs_file']}"
-threshold="${proc_home}/${dic['tcoh_threshold']}"
 mask_file="${proc_home}/${dic['tcoh_mask']}"
 tCoh_file="${proc_home}/${dic['tcoh_file']}"
 geom_file="${proc_home}/${dic['geom_file']}"
-vel_model="${proc_home}/${dic['velo_model']}"
 rms1="${proc_home}/${dic['rms1_dir']}"
 rms2="${proc_home}/${dic['rms2_dir']}"
+threshold="${dic['tcoh_threshold']}"
+vel_model="${dic['velo_model']}"
 n_worker=${dic['num_worker']}
 rms_cutoff=${dic['rms_cutoff']}
 processor=${dic['isce_proc']}
+
+# custom file names for output
+ts1=timeseries_SET_ERA5.h5
+ts2=timeseries_SET_ERA5_Ion.h5
+ts1d=timeseries_SET_ERA5_demErr
+ts2d=timeseries_SET_ERA5_Ion_demErr
+tsRe=timeseriesResidual
 
 
 printf "\n\n\n"
@@ -64,7 +73,7 @@ printf "########################################################\n\n"
 ## 1: Prepare data network
 if [[ $steps == *"1"* ]]; then
     smallbaselineApp.py ${config} --dostep load_data
-    if [[$processor == "topsStack"]]; then
+    if [[ $processor == "topsStack" ]]; then
         bash run_geoInputs.sh
     fi
     smallbaselineApp.py ${config} --dostep modify_network
@@ -95,18 +104,13 @@ fi
 
 # 4: Est topographic error
 if [[ $steps == *"4"* ]]; then
-    mkdir -p ${rms1_dir}/ex ${rms2_dir}/ex
-    ts1=timeseries_SET_ERA5.h5
-    ts2=timeseries_SET_ERA5_Ion.h5
-    ts1d=timeseries_SET_ERA5_demErr
-    ts2d=timeseries_SET_ERA5_Ion_demErr
-    tsRe=timeseriesResidual
+    mkdir -p ${rms1}/ex ${rms2}/ex
     opt=" ${vel_model} -g ${geom_file} --num-worker ${n_worker} "
     #smallbaselineApp.py ${config} --dostep correct_topography
     dem_error.py $ts1 $opt -o ${ts1d}.h5 && mv ${tsRe}.h5 ${tsRe}_1.h5 && mv demErr.h5 demErr_1.h5
     dem_error.py $ts2 $opt -o ${ts2d}.h5 && mv ${tsRe}.h5 ${tsRe}_2.h5 && mv demErr.h5 demErr_2.h5
-    #dem_error.py $ts1 $opt --ex ${rms1_dir}/exclude_date.txt -o ${ts1d}_1_exc.h5 && mv ${tsRe}.h5 ${tsRe}_1_exc.h5 && mv demErr.h5 demErr_1_exc.h5
-    #dem_error.py $ts2 $opt --ex ${rms2_dir}/exclude_date.txt -o ${ts2d}_2_exc.h5 && mv ${tsRe}.h5 ${tsRe}_2_exc.h5 && mv demErr.h5 demErr_2_exc.h5
+    #dem_error.py $ts1 $opt --ex ${rms1}/exclude_date.txt -o ${ts1d}_1_exc.h5 && mv ${tsRe}.h5 ${tsRe}_1_exc.h5 && mv demErr.h5 demErr_1_exc.h5
+    #dem_error.py $ts2 $opt --ex ${rms2}/exclude_date.txt -o ${ts2d}_2_exc.h5 && mv ${tsRe}.h5 ${tsRe}_2_exc.h5 && mv demErr.h5 demErr_2_exc.h5
 fi
 
 
@@ -114,10 +118,10 @@ fi
 if [[ $steps == *"5"* ]]; then
     opt=" -m ${mask_file} --cutoff $rms_cutoff --figsize 10 5 "
     #smallbaselineApp.py ${config} --dostep residual_RMS
-    timeseries_rms.py ${tsRe}_1.h5 ${opt} -r no && mv *_date.txt rms*_1.* ${rms1_dir}
-    timeseries_rms.py ${tsRe}_2.h5 ${opt} -r no && mv *_date.txt rms*_2.* ${rms2_dir}
-    #timeseries_rms.py ${tsRe}_1_exc.h5 $opt -r no && mv *_date.txt *_1_exc.* ${rms1_dir}/exc
-    #timeseries_rms.py ${tsRe}_2_exc.h5 $opt -r no && mv *_date.txt *_2_exc.* ${rms2_dir}/exc
+    timeseries_rms.py ${tsRe}_1.h5 ${opt} -r no && mv *_date.txt rms*_1.* ${rms1}
+    timeseries_rms.py ${tsRe}_2.h5 ${opt} -r no && mv *_date.txt rms*_2.* ${rms2}
+    #timeseries_rms.py ${tsRe}_1_exc.h5 $opt -r no && mv *_date.txt *_1_exc.* ${rms1}/exc
+    #timeseries_rms.py ${tsRe}_2_exc.h5 $opt -r no && mv *_date.txt *_2_exc.* ${rms2}/exc
     #timeseries_rms.py ${tsRe}_2.h5 $opt -r quadratic
 fi
 
@@ -142,7 +146,7 @@ fi
 
 ## 8: Post-result
 if [[ $steps == *"8"* ]]; then
-    smallbaselineApp.py ${config} --dostep geocode
+    smallbaselineApp.py   ${config} --dostep geocode
     fismallbaselineApp.py ${config} --dostep google_earth
     fismallbaselineApp.py ${config} --dostep hdfeos5
 fi

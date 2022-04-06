@@ -19,21 +19,22 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
-
 from copy import copy
 from scipy import linalg
 from datetime import datetime, timedelta
 from mintpy.objects import timeseries
 from mintpy.tsview import timeseriesViewer
 from mintpy.utils import readfile, utils as ut, plot as pp
-from mintpy import view #, tsview, plot_network, plot_transection, plot_coherence_matrix
-
+from mintpy import view
 
 # plot_network code
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mintpy.objects.colors import ColormapExt
 from mintpy.utils import ptime
+
+# My own codes
+import sarut.tools.data as sardata
 
 # Inscrese matplotlib font size when plotting
 plt.rcParams.update({'font.size': 16})
@@ -297,6 +298,231 @@ def plot_ITS_LIVE_nc(ncfile, exclist):
         print('plotting', fout)
         plt.close()
 
+
+#   Plot the azimuth/head angle as a function of latitude
+def plot_head_lat(geo_file, geo='head', lat_table=None, ignore=None, az_convert=False, xspan=None, show=False, title=None, savedir='.'):
+    azi, atr = readfile.read(geo_file, datasetName='azimuthAngle')
+
+    if ignore is not None:
+        if isinstance(ignore, str):
+            if ignore.startswith('<'):
+                cri = float(ignore.split('<')[-1])
+                azi[azi<cri] = float('nan')
+            elif ignore.startswith('>'):
+                cri = float(ignore.split('>')[-1])
+                azi[azi>cri] = float('nan')
+        else:
+            azi[azi==ignore] = float('nan')
+
+    if az_convert:
+        azi = azi + az_convert
+
+    if 'latitude' in atr:
+        lat, atr = readfile.read(geo_file, datasetName='latitude')
+    elif 'Y_FIRST' in atr:
+        #xmin = float(atr['X_FIRST'])
+        #xstp = float(atr['X_STEP'])
+        ymin = float(atr['Y_FIRST'])
+        ystp = float(atr['Y_STEP'])
+        width = int(atr['WIDTH'])
+        length = int(atr['LENGTH'])
+        #lon = np.tile(np.linspace(xmin, xmin+xstp*width, width), (length, 1))
+        lat = np.tile(np.linspace(ymin, ymin+ystp*length, length), (width, 1)).T
+        lat[np.isnan(azi)] = float('nan')
+    else:
+        print('No latitude or Y_FIRST info in attributes, try a latitude table file')
+        if lat_table is not None:
+            lat = readfile.read(lat_table, datasetName='1')[0]
+            lat[np.isnan(azi)] = float('nan')
+        else:
+            print('Latitude table unavailable: {}'.format(lat_table))
+
+    head = ut.azimuth2heading_angle(azi)
+    head = head.flatten()
+    azi  = azi.flatten()
+    lat  = lat.flatten()
+
+    if geo == 'azi':
+        var = azi
+        x_label = 'Azimuth Angle [deg]'
+    elif geo == 'head':
+        var = head
+        x_label = 'Head Angle [deg]'
+    plt.figure(figsize=[9,6])
+    plt.scatter(var, lat, s=0.1)
+    plt.ylabel('Latitude [deg]')
+    plt.xlabel(x_label)
+    plt.title(title)
+    if xspan is not None:
+        if xspan > 0:
+            plt.xlim(np.nanmin(var), np.nanmin(var)+xspan)
+        elif xspan < 0:
+            plt.xlim(np.nanmax(var), np.nanmax(var)+xspan)
+    if savedir is not False:
+        plt.savefig('{}/{}_lat.png'.format(savedir,geo), dpi=300, transparent=True, bbox_inches='tight')
+    if show:
+        plt.show()
+    return var, lat
+
+
+
+def plot_imgs(v, meta, dem=None, vlims=[[None,None]], bbox=[None]*4, unit='mm/yr', coord='geo',
+              inter='antialiased', cmap='RdYlBu_r', wspc=0.02, bratio=1.5, pts=False,
+              picdir='./pic', outf=False):
+
+    from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+    font_size=16
+    plt.rcParams.update({'font.size': font_size})
+
+    ## get attributes
+    if coord == 'geo':
+        xlabel = 'Longitude'
+        ylabel = 'Latitude'
+        length    = int(meta['LENGTH'])
+        width     = int(meta['WIDTH'])
+        x_min     = float(meta['X_FIRST'])
+        x_step    = float(meta['X_STEP'])
+        y_min     = float(meta['Y_FIRST'])
+        y_step    = float(meta['Y_STEP'])
+        lats      = np.arange(y_min,length*y_step+y_min, y_step)
+        lons      = np.arange(x_min, width*x_step+x_min, x_step)
+        ref_lat   = float(meta['REF_LAT'])
+        ref_lon   = float(meta['REF_LON'])
+        geo_extent= [lons[0],lons[-1],lats[-1],lats[0]]
+    elif coord == 'rdr':
+        xlabel = 'Range bin'
+        ylabel = 'Azimuth bin'
+        length    = int(meta['LENGTH'])
+        width     = int(meta['WIDTH'])
+        x_min     = float(meta['XMIN'])
+        x_step    = 1
+        y_min     = float(meta['YMIN'])
+        y_step    = 1
+        ycoords   = np.arange(y_min,length*y_step+y_min, y_step)
+        xcoords   = np.arange(x_min, width*x_step+x_min, x_step)
+        ref_lat   = None
+        ref_lon   = None
+        geo_extent= [xcoords[0],xcoords[-1],ycoords[-1],ycoords[0]]
+
+    # how many subplots to plot
+    nrows, ncols = 1, len(v)
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=[ncols*8,bratio*8], sharey=True, gridspec_kw={'wspace':wspc})
+    if len(v) == 1:
+        axs = [axs]
+    if len(vlims) != len(axs):
+        vlims = [vlims[-1]]*len(axs)
+    if isinstance(unit, str):
+        unit = [unit]
+    if len(unit) != len(axs):
+        unit = [unit[-1]]*len(axs)
+
+    keys = v.keys()
+    # plot each field
+    for i, (ax, k, vlim) in enumerate(zip(axs, keys, vlims)):
+        print('plotting', k)
+        # plot DEM and the image
+        if dem is not None:
+            ie = ax.imshow(dem, extent=geo_extent, vmin=-500, vmax=2000)
+        im = ax.imshow(v[k],    extent=geo_extent, cmap=cmap, vmin=vlim[0], vmax=vlim[1], alpha=0.6, interpolation=inter)
+
+        # colorbar
+        high_val = np.nanpercentile(v[k], 99.8)
+        low_val  = np.nanpercentile(v[k],  0.2)
+        cbck = inset_axes(ax, width="60%", height="7.5%", loc='lower left',
+                bbox_transform=ax.transAxes, bbox_to_anchor=(-0.02,-0.015,1,1))    # colorbar background
+        cbck.set_facecolor('w')
+        cbck.patch.set_alpha(0.7)
+        cbck.get_xaxis().set_visible(False)
+        cbck.get_yaxis().set_visible(False)
+        cbar = inset_axes(cbck, width="90%", height="45%",loc='upper center',
+                bbox_transform=cbck.transAxes, bbox_to_anchor=(0, 0.1, 1, 1))
+        fig.colorbar(im, cax=cbar, orientation='horizontal')
+        cbar.text(0.5, 0.5, unit, ha='center', va='center', fontsize=16, transform=cbar.transAxes)
+        cbar.text(0.02, 0.5, '({:.1f})'.format(low_val),  ha='left', va='center', fontsize=12, transform=cbar.transAxes)
+        cbar.text(0.98, 0.5, '({:.1f})'.format(high_val), ha='right', va='center', fontsize=12, transform=cbar.transAxes)
+
+        if pts:
+            pts = np.array(pts).reshape(-1,2)
+            ax.scatter(pts[:,1], pts[:,0], marker='s', c='k', s=30)
+
+        # scale bar & xlabel
+        if coord == 'geo':
+            if i == 0:
+                if not all(x is None for x in bbox):
+                    cent_lat = np.mean(bbox[2:])
+                    span_lon = bbox[1]-bbox[0]
+                else:
+                    cent_lat = np.mean(lats)
+                    span_lon = np.max(lons)-np.min(lons)
+                r_earth    = 6378.1370
+                km_per_lon = np.pi/180 * r_earth * np.cos(np.pi*cent_lat/180)
+                span_km    = span_lon * km_per_lon
+                scal_km    = round(span_km/3/10)*10
+                scal_lon   = scal_km / km_per_lon
+                scax  = inset_axes(ax, width=scal_lon, height="1%", loc='upper left',
+                        bbox_transform=ax.transAxes, bbox_to_anchor=(0.04, -0.03, 1, 1))
+                scax.set_facecolor('k')
+                scax.axes.xaxis.set_ticks([])
+                scax.axes.yaxis.set_ticks([])
+                scax.set_xlabel('{:d} km'.format(scal_km), fontsize=16, labelpad=2)
+                ax.set_ylabel(ylabel, fontsize=font_size+4)
+
+        # reference point if available
+        if ref_lon and ref_lat:
+            ax.scatter(ref_lon, ref_lat, marker='s', s=50, c='k')
+
+        # others
+        ax.set_title(k)
+        ax.set_xlabel(xlabel, fontsize=font_size+4)
+        ax.set_xlim(bbox[0], bbox[1])
+        ax.set_ylim(bbox[2], bbox[3])
+
+    # output
+    if outf:
+        if not os.path.exists(picdir):
+            os.makedirs(picdir)
+        out_file = f'{picdir}/{outf}.png'
+        plt.savefig(out_file, bbox_inches='tight', transparent=True, dpi=300)
+        print('save to file: '+out_file)
+    plt.show()
+
+
+
+def plot_enulos(v, inc_deg, head_deg, ref=False, display=True, display_more=False):
+    # v            [E, N, U] floats; Three-component model motion (ENU); unit: mm/yr
+    # inc_deg      an array of floats (length * width); unit: degrees
+    # head_deg     an array of floats (length * width); unit: degrees
+    # ref          whether to take reference for v_los
+    v_los = ut.enu2los(v[0], v[1], v[2], inc_angle=inc_deg, head_angle=head_deg)
+    disp         = dict()
+    disp['inc']  = inc_deg
+    disp['head'] = head_deg
+    disp['ve']   = v[0] * np.ones_like(inc_deg)
+    disp['vn']   = v[1] * np.ones_like(inc_deg)
+    disp['vu']   = v[2] * np.ones_like(inc_deg)
+    disp['v_los']= v_los    # sign convention: positive for motion towards satellite
+
+    # Take the reference pixel from the middle of the map (for v_los only)
+    if ref:
+        length, width = v_los.shape
+        disp['v_los'] -= disp['v_los'][length//2, width//2]
+
+    if display:
+        ## Make a quick plot
+        fig, axs = plt.subplots(nrows=1, ncols=6, figsize=[24,10], sharey=True, gridspec_kw={'wspace':0.14})
+        for i, key in enumerate(disp):
+            im = axs[i].imshow(disp[key], cmap='RdYlBu_r')
+            fig.colorbar(im, ax=axs[i], fraction=0.05)
+            axs[i].set_title(key)
+        plt.show()
+
+        # report
+        print('Min. LOS motion = {:.3f}'.format(np.nanmin(disp['v_los'])))
+        print('Max. LOS motion = {:.3f}'.format(np.nanmax(disp['v_los'])))
+        print('Dynamic range of LOS motion = {:.3f}'.format(np.nanmax(disp['v_los'])-np.nanmin(disp['v_los'])))
+    if display_more:
+        ## Make a plot about sin, cos
+        unit_vector = sardata.los_unit_vector(np.deg2rad(inc_deg), np.deg2rad(head_deg))
 
 
 #################################################################
@@ -678,7 +904,7 @@ def get_model(poly_deg, periods, steps):
 # Time-series cleanup plot
 # ---------------------------------------------------------
 
-def date2decimalyear(date):
+def date2decimalyear(date, dt):
     def sinceEpoch(date): # returns seconds since epoch
         return time.mktime(date.timetuple())
     s = sinceEpoch
@@ -690,7 +916,7 @@ def date2decimalyear(date):
     fraction = yearElapsed/yearDuration
     return date.year + fraction
 
-def plot_ts_step(ts_file, ts_file_tro, ts_file_set, ts_file_dem, pts_file, pts, fig_dpi=300):
+def plot_ts_step(ts_file, ts_file_tro, ts_file_set, ts_file_dem, pts_file, pts, fig_dpi=300, proj_dir='.', pic_dir='.'):
     ts_file = os.path.expanduser(f'{proj_dir}/{ts_file}')
     ts_file_tro = os.path.expanduser(f'{proj_dir}/{ts_file_tro}')
     ts_file_dem = os.path.expanduser(f'{proj_dir}/{ts_file_dem}')
@@ -887,7 +1113,7 @@ def checkdt(dates, dis, startdt=None, enddt=None, excdt=[]):
     return yr_diff, new_dis, new_dates
 
 
-def plot_timeseries(ts_file, pts, folder='linear', figtitle='Time-series', startDate=None, endDate=None, excDate=[], fig_dpi=300):
+def plot_timeseries(ts_file, pts, folder='linear', figtitle='Time-series', startDate=None, endDate=None, excDate=[], fig_dpi=300, proj_dir='.', pic_dir='.'):
     ts_file = os.path.expanduser(f'{proj_dir}/{ts_file}')
     pts_file = f'pixels_{pts}.txt'
 
@@ -1065,7 +1291,7 @@ def plot_timeseries(ts_file, pts, folder='linear', figtitle='Time-series', start
 # ---------------------------------------------------------
 
 def plot_velocitymap(data, pts=None, folder='velocity', title='Velocity', fig_dpi=300,
-                     vmin=-20, vmax=20, stdmin=0.0, stdmax=4.0, ampmax=40, plot_seasonalAmp=False, gv=False):
+                     vmin=-20, vmax=20, stdmin=0.0, stdmax=4.0, ampmax=40, plot_seasonalAmp=False, gv=False, pic_dir='.'):
     from matplotlib import colors
 
     velo_file = f'{folder}/{data}.h5'
@@ -1219,7 +1445,7 @@ def plot_velocitymap(data, pts=None, folder='velocity', title='Velocity', fig_dp
 # ---------------------------------------------------------
 
 def plot_transec(data, start_lalo, end_lalo, pts=None, mask_file=None, folder='velocity', title='Velocity',
-                 fig_dpi=300, vmin=-20, vmax=20, tvmin=-5, tvmax=5, svmin=-0.5, svmax=0.5):
+                 fig_dpi=300, vmin=-20, vmax=20, tvmin=-5, tvmax=5, svmin=-0.5, svmax=0.5, pic_dir='.'):
     import matplotlib.gridspec as gridspec
     from matplotlib import colors
 
@@ -1441,7 +1667,7 @@ def plot_transec(data, start_lalo, end_lalo, pts=None, mask_file=None, folder='v
 # Plot strain map
 # ---------------------------------------------------------
 def plot_strainmap(data, pts, folder='linear', title='Strain rate', fig_dpi=300,
-                 vmin=-1, vmax=1, chip_size=11):
+                 vmin=-1, vmax=1, chip_size=11, pic_dir='.'):
     import matplotlib.gridspec as gridspec
 
     velo_file = f'velocity_{folder}/{data}.h5'
@@ -1805,7 +2031,7 @@ class tsRMS():
             return dates, datestr
 
     # ----------------------------------------------------------------------------------
-    def plot_sceneNoise(self, average=False, shift=-1, SLC_path=None, ylog=False, return_values=False, plotTEC=False, pic_dic='./pic_supp'):
+    def plot_sceneNoise(self, average=False, shift=-1, SLC_path=None, ylog=False, return_values=False, plotTEC=False, pic_dir='./pic_supp'):
         from matplotlib.patches import Rectangle
 
         if plotTEC is False:
@@ -1887,6 +2113,7 @@ class tsRMS():
                 #line3 = ax.axhline(y=np.percentile(rms, 99.7), linestyle='-.', color='gray', lw=2, label=label_percent2)
                 for i in range(len(highRMS_date)):
                     highbar = ax.bar(dates[highRMS_date[i]], rms[highRMS_date[i]], width=bar_width.days, color='lightgrey')
+                    lowbar = []
                 if average is True:
                     avgline, = ax.plot(dates, rmsAvg, c='r', lw=2)
                     try:
@@ -1961,7 +2188,7 @@ class tsRMS():
 # ---------------------------------------------------------
 # Plot Sentinel SLC process software versions
 # ---------------------------------------------------------
-def plot_slcproc(s1ver_file):
+def plot_slcproc(s1ver_file, pic_dir='.'):
     dates = []
     versions = []
     with open(s1ver_file, 'r') as f:
@@ -2012,7 +2239,7 @@ def plot_slcproc(s1ver_file):
 # 3. If the weather model correlation agrees with the observation?
 # 4. Is there any spatial variance in the elevation-phase correlation (e.g., latitude dependent, coastal or inland features)?
 
-def plot_ele_atm(ts_file, atm_file, mask_file=None, fname='', plotdate='all', withshift=1, noshow=True):
+def plot_ele_atm(ts_file, atm_file, mask_file=None, fname='', plotdate='all', withshift=1, noshow=True, pic_dir='.'):
     if plotdate == 'all':
         from mintpy import info
         datelist = info.print_date_list(ts_file)

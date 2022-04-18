@@ -603,16 +603,17 @@ def read_mask(mask_file):
     mask = mask_data==1
     return 1*mask
 
-def read_img(fname, mask):
+def read_img(fname, mask=None):
     # The dataset unit is meter
     v     = readfile.read(fname, datasetName='velocity')[0]*1000     # Unit: mm/y
     #meta  = readfile.read(fname, datasetName='velocity')[1]          # metadata
     #v_std = readfile.read(fname, datasetName='velocityStd')[0] *1000  # Unit: mm/y
 
     # read mask and mask the dataset
-    mask_file = mask   # 'waterMask.h5' or 'maskTempCoh.h5'
-    mask_data = readfile.read(mask_file)[0]
-    v[mask_data==0] = np.nan
+    if mask is not None:
+        mask_file = mask   # 'waterMask.h5' or 'maskTempCoh.h5'
+        mask_data = readfile.read(mask_file)[0]
+        v[mask_data==0] = np.nan
     #v_std[mask_data==0] = np.nan
     #water_mask = readfile.read('../../waterMask.h5')[0]
     return v

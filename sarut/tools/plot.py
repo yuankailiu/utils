@@ -437,7 +437,7 @@ def plot_imgs(v, meta, dem=None, vlims=[[None,None]], bbox=[None]*4, unit='mm/yr
         cbar = inset_axes(cbck, width="90%", height="45%",loc='upper center',
                 bbox_transform=cbck.transAxes, bbox_to_anchor=(0, 0.1, 1, 1))
         fig.colorbar(im, cax=cbar, orientation='horizontal')
-        cbar.text(0.5, 0.5, unit, ha='center', va='center', fontsize=16, transform=cbar.transAxes)
+        cbar.text(0.5, 0.5, unit[i], ha='center', va='center', fontsize=16, transform=cbar.transAxes)
         cbar.text(0.02, 0.5, '({:.1f})'.format(low_val),  ha='left', va='center', fontsize=12, transform=cbar.transAxes)
         cbar.text(0.98, 0.5, '({:.1f})'.format(high_val), ha='right', va='center', fontsize=12, transform=cbar.transAxes)
 
@@ -482,7 +482,7 @@ def plot_imgs(v, meta, dem=None, vlims=[[None,None]], bbox=[None]*4, unit='mm/yr
         if not os.path.exists(picdir):
             os.makedirs(picdir)
         out_file = f'{picdir}/{outf}.png'
-        plt.savefig(out_file, bbox_inches='tight', transparent=True, dpi=300)
+        plt.savefig(out_file, bbox_inches='tight', dpi=300)
         print('save to file: '+out_file)
     plt.show()
 

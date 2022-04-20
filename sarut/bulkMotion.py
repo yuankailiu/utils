@@ -12,8 +12,10 @@ import sys
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression, Lasso
-from scipy.stats import linregress
+
+import sklearn
+import scipy
+import cvxpy as cp
 
 
 ## Load from MintPy
@@ -26,7 +28,6 @@ import platemotion
 from astropy import units as u
 
 ## Load my codes
-import sarut.tools.data as sardata
 import sarut.tools.plot as sarplt
 
 plt.rcParams.update({'font.size': 16})
@@ -188,12 +189,27 @@ def pmm_lalo_enu(pmm, Lats, Lons):
     return enu
 
 
+def cvxpy_reg(x, y, p=1, report=False):
+    # Define and solve the CVXPY problem.
+    A = np.vstack([x, np.ones(len(x))]).T
+    m = cp.Variable(2)          # 2 parameter space (slope & intercept)
+    cost = cp.norm(A@m-y, p=p)  # L1 norm cost function
+    prob = cp.Problem(cp.Minimize(cost))
+    prob.solve()
+    y_pred = A @ m.value
+    if report:
+        print("The optimal value is", prob.value)
+        print("The optimal model is")
+        print(m.value)
+        print("The L{} norm of the residual = {} ".format(p, cp.norm(A@m-y, p=p).value))
+    return prob, y_pred
+
 
 def sklearn_L2_reg(x, y, report=False):
     # x need to be reshape(-1,1)
     # Create an instance of a linear regression model
     # and fit it to the data with the fit() function
-    fit = LinearRegression().fit(x, y)
+    fit = sklearn.linear_model.LinearRegression().fit(x, y)
     # Obtain the coefficient of determination by calling the model
     # with the score() function, then print the coefficient:
     r_sq = fit.score(x, y)
@@ -206,7 +222,7 @@ def sklearn_L2_reg(x, y, report=False):
 
 
 def sklearn_L1_reg(x, y, report=False):
-    fit = Lasso(alpha=1.0)
+    fit = sklearn.linear_model.Lasso(alpha=1.0)
     fit.fit(x, y)
     r_sq = fit.score(x, y)
     y_pred = fit.predict(x)
@@ -218,7 +234,7 @@ def sklearn_L1_reg(x, y, report=False):
 
 
 def scipy_L2_reg(x, y, report=False):
-    fit = linregress(x, y)
+    fit = scipy.stats.linregress(x, y)
     y_pred = fit.intercept + fit.slope * x
     if report:
         print('slope:', fit.slope)
@@ -275,7 +291,7 @@ def scatter_fields(data1, data2, labels=['data1','data2'], vlim=[-20,20], title=
 
 
 
-def plot_range_ramp(data1, data2=None, range_dist=None, latitude=None, titstr='', vlim=[None, None], plot=True, picdir='./pic', outf=True):
+def plot_range_ramp(data1, data2=None, range_dist=None, type=None, latitude=None, titstr='', vlim=[None, None], plot=True, picdir='./pic', outf=True):
     # compare different inputs
     if data2 is not None:
         if data1.shape == data2.shape:
@@ -302,7 +318,7 @@ def plot_range_ramp(data1, data2=None, range_dist=None, latitude=None, titstr=''
         factor     = float(width)
     else:
         xarry      = np.array(range_dist)
-        xlabel     = 'Slant range distance [km]'
+        xlabel     = '{} range distance [km]'.format(type.title())
         slope_unit = 'mm/yr/km'
         factor     = 1.0
         if latitude is None:
@@ -320,6 +336,7 @@ def plot_range_ramp(data1, data2=None, range_dist=None, latitude=None, titstr=''
         y = data1.flatten()[~np.isnan(data1.flatten())]
         c = yarry.flatten()[~np.isnan(data1.flatten())]
         y = y - np.nanmedian(y)
+        print('Range ramp scatter plot shifted by median {}'.format(np.nanmedian(y)))
 
         # linear fit to the trend
         fit, y_pred  = scipy_L2_reg(x, y)
@@ -329,7 +346,7 @@ def plot_range_ramp(data1, data2=None, range_dist=None, latitude=None, titstr=''
             params_legend += 'slope = {:.3f} {:s}'.format(fit.slope*factor, slope_unit)
         else:
             range_span = np.max(x) - np.min(x)
-            print('Slant range distance spans {:.1f} km'.format(range_span))
+            print('{} range distance spans {:.1f} km'.format(type.title(), range_span))
             params_legend += 'slope = {:.3f} {:s}'.format(fit.slope*factor, slope_unit)
             params_legend += '\n ({:.3f} mm/yr/track)'.format(fit.slope * range_span)
 
@@ -354,6 +371,7 @@ def plot_range_ramp(data1, data2=None, range_dist=None, latitude=None, titstr=''
             y =  data.flatten()[~np.isnan(data.flatten())]
             c = yarry.flatten()[~np.isnan(data.flatten())]
             y = y - np.nanmedian(y)
+            print('Range ramp scatter plot shifted by median {}'.format(np.nanmedian(y)))
 
             # linear fit to the trend
             fit, y_pred  = scipy_L2_reg(x, y)
@@ -363,7 +381,7 @@ def plot_range_ramp(data1, data2=None, range_dist=None, latitude=None, titstr=''
                 params_legend += 'slope = {:.3f} {:s}'.format(fit.slope*factor, slope_unit)
             else:
                 range_span = np.max(x) - np.min(x)
-                print('Slant range distance spans {:.1f} km'.format(range_span))
+                print('{} range distance spans {:.1f} km'.format(type.title(), range_span))
                 params_legend += 'slope = {:.3f} {:s}'.format(fit.slope*factor, slope_unit)
                 params_legend += '\n ({:.3f} mm/yr/track)'.format(fit.slope * range_span)
 
@@ -442,15 +460,14 @@ def compute_ground_range(atr, rs, z):
     z       DEM elevation [m]
     """
 
-    Re    = atr['EARTH_RADIUS']    # approx. Earth's radius
-    h     = atr['HEIGHT']          # satellite height
+    Re    = float(atr['EARTH_RADIUS'])    # approx. Earth's radius
+    h     = float(atr['HEIGHT'])          # satellite height
 
     # angle at the center of the Earth
     gamma = np.arccos(( (Re+h)**2 + (Re+z)**2 - rs**2 ) / ( 2*(Re+h)*(Re+z) ))
 
-    rg    = Re * gamma             # ground range
-
     # set the zero ground range at the nearest range pixel
+    rg    = Re * gamma   # ground range
     rg -= np.nanmin(rg)
 
     return rg
@@ -576,7 +593,7 @@ def plot_enulos(v, inc_deg, head_deg, ref=False, display=True, display_more=Fals
         ## Make a quick plot
         fig, axs = plt.subplots(nrows=1, ncols=6, figsize=[24,10], sharey=True, gridspec_kw={'wspace':0.14})
         for i, key in enumerate(disp):
-            im = axs[i].imshow(disp[key], cmap=camp)
+            im = axs[i].imshow(disp[key], cmap=cmap)
             fig.colorbar(im, ax=axs[i], fraction=0.05)
             axs[i].set_title(key)
         plt.show()
@@ -807,18 +824,18 @@ class LOSgeom():
         if indata is None:
             # show model
             titstr = '{} Plate bulk motion LOS projection\n{}'.format(self.name, vstr)
-            self.rangeslope = plot_range_ramp(data1=V_los, range_dist=range_dist, latitude=lat, titstr=titstr, vlim=vlim, picdir=picdir, outf=outf)
+            self.rangeslope = plot_range_ramp(data1=V_los, range_dist=range_dist, type=distance, latitude=lat, titstr=titstr, vlim=vlim, picdir=picdir, outf=outf)
         elif (indata is not None) and (compare is True):
             # show data and compare with model
             titstr = ['{} Data LOS velocity'.format(self.name),
                       '{} Plate bulk motion LOS projection\n{}'.format(self.name, vstr),
                       '{} Corrected LOS velocity'.format(self.name)]
-            self.rangeslope = plot_range_ramp(data1=data, data2=V_los, range_dist=range_dist, latitude=lat, titstr=titstr, vlim=vlim, picdir=picdir, outf=outf)
+            self.rangeslope = plot_range_ramp(data1=data, data2=V_los, range_dist=range_dist, type=distance, latitude=lat, titstr=titstr, vlim=vlim, picdir=picdir, outf=outf)
             self.V_data = np.array(indata)
         else:
             # show data
             titstr = '{} Data LOS velocity'.format(self.name)
-            self.rangeslope = plot_range_ramp(data1=data, range_dist=range_dist, latitude=lat, titstr=titstr, vlim=vlim, picdir=picdir, outf=outf)
+            self.rangeslope = plot_range_ramp(data1=data, range_dist=range_dist, type=distance, latitude=lat, titstr=titstr, vlim=vlim, picdir=picdir, outf=outf)
             self.V_data = np.array(indata)
         return self.rangeslope
 

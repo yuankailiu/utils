@@ -367,7 +367,7 @@ def plot_head_lat(geo_file, geo='head', lat_table=None, ignore=None, az_convert=
 
 
 def plot_imgs(v, meta, dem=None, vlims=[[None,None]], bbox=[None]*4, unit='mm/yr', coord='geo',
-              inter='antialiased', cmap='RdYlBu_r', wspc=0.02, bratio=1.5, pts=False,
+              inter='antialiased', cmap='RdYlBu_r', alpha=0.7, wspc=0.02, bratio=1.5, pts=False,
               picdir='./pic', outf=False):
 
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -423,7 +423,7 @@ def plot_imgs(v, meta, dem=None, vlims=[[None,None]], bbox=[None]*4, unit='mm/yr
         # plot DEM and the image
         if dem is not None:
             ie = ax.imshow(dem, extent=geo_extent, vmin=-500, vmax=2000)
-        im = ax.imshow(v[k],    extent=geo_extent, cmap=cmap, vmin=vlim[0], vmax=vlim[1], alpha=0.6, interpolation=inter)
+        im = ax.imshow(v[k],    extent=geo_extent, cmap=cmap, vmin=vlim[0], vmax=vlim[1], alpha=alpha, interpolation=inter)
 
         # colorbar
         high_val = np.nanpercentile(v[k], 99.8)

@@ -600,8 +600,8 @@ def plotstackcomplexdata(GDALfilename_wildcard,
 ############## New functions for plotting nicer velocity deramp/iono/scaling #############
 def read_mask(mask_file):
     mask_data = readfile.read(mask_file)[0]
-    mask = mask_data==1
-    return 1*mask
+    mask      = 1*(mask_data==1)
+    return mask
 
 def read_img(fname, mask=None):
     # The dataset unit is meter
@@ -611,8 +611,7 @@ def read_img(fname, mask=None):
 
     # read mask and mask the dataset
     if mask is not None:
-        mask_file = mask   # 'waterMask.h5' or 'maskTempCoh.h5'
-        mask_data = readfile.read(mask_file)[0]
+        mask_data = readfile.read(mask)[0] # 'waterMask.h5' or 'maskTempCoh.h5'
         v[mask_data==0] = np.nan
     #v_std[mask_data==0] = np.nan
     #water_mask = readfile.read('../../waterMask.h5')[0]

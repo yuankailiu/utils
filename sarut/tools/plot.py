@@ -33,8 +33,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mintpy.objects.colors import ColormapExt
 from mintpy.utils import ptime
 
-# My own codes
-import sarut.tools.data as sardata
 
 # Inscrese matplotlib font size when plotting
 plt.rcParams.update({'font.size': 16})
@@ -520,9 +518,6 @@ def plot_enulos(v, inc_deg, head_deg, ref=False, display=True, display_more=Fals
         print('Min. LOS motion = {:.3f}'.format(np.nanmin(disp['v_los'])))
         print('Max. LOS motion = {:.3f}'.format(np.nanmax(disp['v_los'])))
         print('Dynamic range of LOS motion = {:.3f}'.format(np.nanmax(disp['v_los'])-np.nanmin(disp['v_los'])))
-    if display_more:
-        ## Make a plot about sin, cos
-        unit_vector = sardata.los_unit_vector(np.deg2rad(inc_deg), np.deg2rad(head_deg))
 
 
 #################################################################

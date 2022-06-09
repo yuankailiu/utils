@@ -13,8 +13,9 @@ from mintpy.utils import ptime
 from mintpy.utils import plot as pp
 from mintpy.objects import ifgramStack
 
-import sarut.tools.plot as sarplt
-import sarut.tools.math as sarmath
+import matplotlib as mpl
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mintpy.objects.colors import ColormapExt
 
 plt.rcParams.update({'font.size': 16})
 
@@ -120,13 +121,54 @@ def find_npair(A):
     return num_pair
 
 
+def networking(friends, sortbylen=True):
+    # person's friendship circle (network) is a person themselves
+    # plus friendship circles of all their direct friends
+    # minus already seen people
+    # https://stackoverflow.com/questions/15331877/creating-dictionaries-of-friends-that-know-other-friends-in-python
+    def friends_graph(people_all, friends):
+        # graph of friends (adjacency lists representation)
+        G = {p: [] for p in people_all} # person -> direct friends list
+        for friend in friends:
+            for p in friend:
+                f_list = list(friend)
+                f_list.remove(p)
+                G[p].extend(f_list)
+        return G
+
+    def friendship_circle(person): # a.k.a. connected component
+        seen.add(person)
+        yield person
+        for friend in direct_friends[person]:
+            if friend not in seen:
+                yield from friendship_circle(friend)
+
+    people_all = list(set(sum(friends, [])))
+    direct_friends = friends_graph(people_all, friends)
+    seen = set() # already seen people
+
+    # group people into friendship circles
+    circs = (friendship_circle(p) for p in people_all if p not in seen)
+
+    # convert generator to a list with sublist(s)
+    circ_lists = []
+    for circ in circs:
+        member = sorted(list(circ))
+        circ_lists.append(member)
+
+    if sortbylen:
+        circ_lists.sort(key=len, reverse=True)
+
+    return circ_lists
+
+
 def find_networks(A, date_list, date12_list, s1_dict=None):
     pairs = []
     for row in A:
         date12_idx = list(np.nonzero(row)[0])
         pairs.append(date12_idx)
 
-    nets = sarmath.networking(pairs)
+    nets = networking(pairs)
     print('\nNumber of networks found: {}\n'.format(len(nets)))
 
     date_groups = []
@@ -242,7 +284,193 @@ def plot_num_pairs(nets, npairs, name, show=False):
         plt.show()
 
 
-def plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, show=False):
+## modified from mintpy plot_network function
+## now can plot network and mark the gaps. see `find_network_gap.py`
+## to-do: combine plotting funcs down below to this func (2022-3-3 ykl)
+def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop=[], print_msg=True):
+    """Plot Temporal-Perp baseline Network
+    Inputs
+        ax : matplotlib axes object
+        date12List : list of string for date12 in YYYYMMDD_YYYYMMDD format
+        dateList   : list of string, for date in YYYYMMDD format
+        pbaseList  : list of float, perp baseline, len=number of acquisition
+        p_dict   : dictionary with the following items:
+                      fontsize
+                      linewidth
+                      markercolor
+                      markersize
+
+                      cohList : list of float, coherence value of each interferogram, len = number of ifgrams
+                      colormap : string, colormap name
+                      disp_title : bool, show figure title or not, default: True
+                      disp_drop: bool, show dropped interferograms or not, default: True
+    Output
+        ax : matplotlib axes object
+    """
+
+    # Figure Setting
+    if 'fontsize'    not in p_dict.keys():  p_dict['fontsize']    = 12
+    if 'linewidth'   not in p_dict.keys():  p_dict['linewidth']   = 2
+    if 'linewidths'  not in p_dict.keys():  p_dict['linewidths']  = 2
+    if 'linecolor'   not in p_dict.keys():  p_dict['linecolor']   = False
+    if 'markercolor' not in p_dict.keys():  p_dict['markercolor'] = 'orange'
+    if 'markersize'  not in p_dict.keys():  p_dict['markersize']  = 12
+    if 'edgecolor'   not in p_dict.keys():  p_dict['edgecolor']   = 'k'
+    if 'transparency' not in p_dict.keys():  p_dict['transparency']   = 0.7
+
+    # For colorful display of coherence
+    if 'cohList'     not in p_dict.keys():  p_dict['cohList']     = None
+    if 'xlabel'      not in p_dict.keys():  p_dict['xlabel']      = None #'Time [years]'
+    if 'ylabel'      not in p_dict.keys():  p_dict['ylabel']      = 'Perp Baseline [m]'
+    if 'cbar_label'  not in p_dict.keys():  p_dict['cbar_label']  = 'Average Spatial Coherence'
+    if 'cbar_size'   not in p_dict.keys():  p_dict['cbar_size']   = '3%'
+    if 'disp_cbar'   not in p_dict.keys():  p_dict['disp_cbar']   = True
+    if 'colormap'    not in p_dict.keys():  p_dict['colormap']    = 'RdBu'
+    if 'vlim'        not in p_dict.keys():  p_dict['vlim']        = [0.2, 1.0]
+    if 'disp_title'  not in p_dict.keys():  p_dict['disp_title']  = True
+    if 'disp_drop'   not in p_dict.keys():  p_dict['disp_drop']   = True
+    if 'disp_legend' not in p_dict.keys():  p_dict['disp_legend'] = True
+    if 'every_year'  not in p_dict.keys():  p_dict['every_year']  = 1
+    if 'number'      not in p_dict.keys():  p_dict['number']      = None
+
+    # support input colormap: string for colormap name, or colormap object directly
+    if isinstance(p_dict['colormap'], str):
+        cmap = ColormapExt(p_dict['colormap']).colormap
+    elif isinstance(p_dict['colormap'], mpl.colors.LinearSegmentedColormap):
+        cmap = p_dict['colormap']
+    else:
+        raise ValueError('unrecognized colormap input: {}'.format(p_dict['colormap']))
+
+    cohList = p_dict['cohList']
+    transparency = p_dict['transparency']
+
+    # Date Convert
+    dateList = ptime.yyyymmdd(sorted(dateList))
+    dates, datevector = ptime.date_list2vector(dateList)
+    tbaseList = ptime.date_list2tbase(dateList)[0]
+
+    ## maxBperp and maxBtemp
+    date12List = ptime.yyyymmdd_date12(date12List)
+    ifgram_num = len(date12List)
+    pbase12 = np.zeros(ifgram_num)
+    tbase12 = np.zeros(ifgram_num)
+    for i in range(ifgram_num):
+        m_date, s_date = date12List[i].split('_')
+        m_idx = dateList.index(m_date)
+        s_idx = dateList.index(s_date)
+        pbase12[i] = pbaseList[s_idx] - pbaseList[m_idx]
+        tbase12[i] = tbaseList[s_idx] - tbaseList[m_idx]
+    if print_msg:
+        print('max perpendicular baseline: {:.2f} m'.format(np.max(np.abs(pbase12))))
+        print('max temporal      baseline: {} days'.format(np.max(tbase12)))
+
+    ## Keep/Drop - date12
+    date12List_keep = sorted(list(set(date12List) - set(date12List_drop)))
+    if not date12List_drop:
+        p_dict['disp_drop'] = False
+
+    ## Keep/Drop - date
+    m_dates = [i.split('_')[0] for i in date12List_keep]
+    s_dates = [i.split('_')[1] for i in date12List_keep]
+    dateList_keep = ptime.yyyymmdd(sorted(list(set(m_dates + s_dates))))
+    dateList_drop = sorted(list(set(dateList) - set(dateList_keep)))
+    idx_date_keep = [dateList.index(i) for i in dateList_keep]
+    idx_date_drop = [dateList.index(i) for i in dateList_drop]
+
+    # Ploting
+    disp_min = p_dict['vlim'][0]
+    disp_max = p_dict['vlim'][1]
+    if cohList is not None:
+        data_min = min(cohList)
+        data_max = max(cohList)
+        if print_msg:
+            print('showing coherence')
+            print('data range: {}'.format([data_min, data_max]))
+            print('display range: {}'.format(p_dict['vlim']))
+
+        # plot low coherent ifgram first and high coherence ifgram later
+        cohList_keep = [cohList[date12List.index(i)] for i in date12List_keep]
+        date12List_keep = [x for _, x in sorted(zip(cohList_keep, date12List_keep))]
+
+    if p_dict['disp_cbar']:
+        cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
+        norm = mpl.colors.Normalize(vmin=disp_min, vmax=disp_max)
+        cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+        cbar.ax.tick_params(labelsize=p_dict['fontsize'])
+        cbar.set_label(p_dict['cbar_label'], fontsize=p_dict['fontsize'], rotation=270, labelpad=25)
+
+    # Dot - SAR Acquisition
+    if idx_date_keep:
+        x_list = [dates[i] for i in idx_date_keep]
+        y_list = [pbaseList[i] for i in idx_date_keep]
+        if isinstance(p_dict['markercolor'], str):
+            ax.plot(x_list, y_list, 'ko', alpha=0.7, ms=p_dict['markersize'], mfc=p_dict['markercolor'])
+        else:
+            ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], cmap=p_dict['colormap'],
+                        alpha=0.7, edgecolors=p_dict['edgecolor'], linewidths=p_dict['linewidths'])
+    if idx_date_drop:
+        x_list = [dates[i] for i in idx_date_drop]
+        y_list = [pbaseList[i] for i in idx_date_drop]
+        ax.plot(x_list, y_list, 'ko', alpha=0.7, ms=p_dict['markersize'], mfc='r')
+
+    ## Line - Pair/Interferogram
+    # interferograms dropped
+    if p_dict['disp_drop']:
+        for date12 in date12List_drop:
+            date1, date2 = date12.split('_')
+            idx1 = dateList.index(date1)
+            idx2 = dateList.index(date2)
+            x = np.array([dates[idx1], dates[idx2]])
+            y = np.array([pbaseList[idx1], pbaseList[idx2]])
+            if cohList is not None:
+                val = cohList[date12List.index(date12)]
+                val_norm = (val - disp_min) / (disp_max - disp_min)
+                ax.plot(x, y, '--', lw=p_dict['linewidth'], alpha=transparency, c=cmap(val_norm))
+            else:
+                ax.plot(x, y, '--', lw=p_dict['linewidth'], alpha=transparency, c='r')
+
+    # interferograms kept
+    for date12 in date12List_keep:
+        date1, date2 = date12.split('_')
+        idx1 = dateList.index(date1)
+        idx2 = dateList.index(date2)
+        x = np.array([dates[idx1], dates[idx2]])
+        y = np.array([pbaseList[idx1], pbaseList[idx2]])
+        if cohList is not None:
+            val = cohList[date12List.index(date12)]
+            val_norm = (val - disp_min) / (disp_max - disp_min)
+            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=cmap(val_norm))
+        elif p_dict['linecolor'] is not False:
+            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=p_dict['linecolor'])
+        else:
+            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c='k')
+
+    if p_dict['disp_title']:
+        ax.set_title('Interferogram Network', fontsize=p_dict['fontsize'])
+
+    # axis format
+    ax = pp.auto_adjust_xaxis_date(ax, datevector, fontsize=p_dict['fontsize'],
+                                every_year=p_dict['every_year'])[0]
+    ax = pp.auto_adjust_yaxis(ax, pbaseList, fontsize=p_dict['fontsize'])
+    ax.set_xlabel(p_dict['xlabel'], fontsize=p_dict['fontsize'])
+    ax.set_ylabel(p_dict['ylabel'], fontsize=p_dict['fontsize'])
+    ax.tick_params(which='both', direction='in', labelsize=p_dict['fontsize'],
+                   bottom=True, top=True, left=True, right=True)
+
+    if p_dict['number'] is not None:
+        ax.annotate(p_dict['number'], xy=(0.03, 0.92), color='k',
+                    xycoords='axes fraction', fontsize=p_dict['fontsize'])
+
+    # Legend
+    if p_dict['disp_drop'] and p_dict['disp_legend']:
+        solid_line = mpl.lines.Line2D([], [], color='k', ls='solid',  label='Ifgram used')
+        dash_line  = mpl.lines.Line2D([], [], color='k', ls='dashed', label='Ifgram dropped')
+        ax.legend(handles=[solid_line, dash_line])
+
+    return ax, cbar
+
+
+def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, show=False):
     colors=plt.rcParams['axes.prop_cycle'].by_key()['color']
     plt.figure(figsize=[10,4.5])
     ax = plt.subplot(1, 1, 1)
@@ -274,7 +502,7 @@ def plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, 
         date12List_drop=[]   # 20150807_20160215
 
         # plot it
-        ax, cbar = sarplt.plot_network(ax, date12_groups[i], date_groups[i], srange_list, p_dict, date12List_drop)
+        ax, cbar = plot_network(ax, date12_groups[i], date_groups[i], srange_list, p_dict, date12List_drop)
 
     cbar.set_ticks(np.arange(1,max(npairs)))
     cbar.ax.set_yticklabels(np.arange(1,max(npairs)).astype(str))
@@ -338,7 +566,7 @@ def main(inps):
 
 
     ## Plot the network
-    plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, inps.spread, inps.name, show=False)
+    call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, inps.spread, inps.name, show=False)
 
 
 ######################################################################

@@ -16,16 +16,6 @@ from mintpy.objects import ifgramStack
 import sarut.tools.plot as sarplt
 import sarut.tools.math as sarmath
 
-
-# Change font
-if False:
-    from matplotlib import font_manager
-    font_dirs = ['/net/kraken.gps.caltech.edu/export/bak/ykliu/fonts']
-    font_files = font_manager.findSystemFonts(fontpaths=font_dirs)
-    for font_file in font_files:
-        font_manager.fontManager.addfont(font_file)
-    plt.rcParams['font.family'] = 'Helvetica'
-
 plt.rcParams.update({'font.size': 16})
 
 
@@ -77,6 +67,7 @@ def cmdLineParse():
 
 
 def dates_with_Npairs(dateList, numPair, N):
+    ## Print other acquisitions with low number of pairs (Not used, this is not helpful)
     dates = list(np.array(dateList)[numPair==N])
     nears = nearest_dates(dateList, dates, 3)
     return dates
@@ -99,12 +90,18 @@ def nearest_dates(dateList, dates, n):
 def check_rank(A):
     rk = np.linalg.matrix_rank(A)
     if rk < A.shape[1]-1:
-        print('\nRank deficient! The network is disconnected!')
-        print('Num of cols of design matrix A (numDate-1) = ', A.shape[1]-1)
-        print('Rank = ', rk, '\n')
+        print('\nRank deficient. The network is disconnected.')
+        print('Rank = {}; Num of coloumns (numDate-1) = {}'.format(rk, A.shape[1]-1))
     else:
-        print('The network is good. The design matrix has full rank.')
-
+        print('Full rank. The network is fully connected')
+    lack_ref = []
+    lack_sec = []
+    for j in range(A.shape[1]):
+        if (-1 not in A[:,j]) and (j != A.shape[1]-1):
+            lack_ref.append(j)
+        if ( 1 not in A[:,j]) and (j != 0):
+            lack_sec.append(j)
+    return lack_ref, lack_sec
 
 def find_npair(A):
     """
@@ -123,7 +120,7 @@ def find_npair(A):
     return num_pair
 
 
-def find_networks(A, date_list, date12_list, s1_dict):
+def find_networks(A, date_list, date12_list, s1_dict=None):
     pairs = []
     for row in A:
         date12_idx = list(np.nonzero(row)[0])
@@ -137,9 +134,10 @@ def find_networks(A, date_list, date12_list, s1_dict):
     for i, date_id in enumerate(nets):
         dates = list(np.array(date_list)[date_id])
         print("Connected network no.{} ({} dates):".format(i+1, len(date_id)))
-        print('Acquisition\tIW1 starting range (m)')
-        for date in dates:
-            print('{}\t{}'.format(date, s1_dict[date][2]))
+        if s1_dict:
+            print('Acquisition\tIW1 starting range (m)')
+            for date in dates:
+                print('{}\t{}'.format(date, s1_dict[date][2]))
         date_groups.append(dates)
         date12_groups.append([])
         for date12 in date12_list:
@@ -217,49 +215,15 @@ def readStackHDF5(ifgfile):
     return A, date12_list, date_list
 
 
-
-######################################################################
-
-def main(inps, show=False):
-
-    ## Get the version and starting ranges
-    s1_dict = read_s1_version(inps.s1_version)
-
-
-    ## Get the date12 and date lists:
-    if inps.src == 1:
-        sep = '_'
-        print('Reading design matrix from: {}'.format(inps.dir))
-        dir_list = glob.glob(inps.dir, '*{}*'.format(sep))
-        A, date12_list ,date_list = readListFile(dir_list, sep)
-    elif inps.src == 2:
-        if inps.name == 'unw':
-            prestr = 'config_igram_unw_'
-            sep = '_'
-        elif inps.name == 'ion':
-            prestr = 'config_unwrap_ion_'
-            sep = '-'
-        print('Reading design matrix from: {}'.format(inps.listfile))
-        A, date12_list ,date_list = readListFile(inps.listfile, prestr, sep)
-    elif inps.src == 3:
-        print('Reading design matrix from: {}'.format(inps.ifgfile))
-        A, date12_list, date_list = readStackHDF5(inps.ifgfile)
-    print('')
-    print('number of pairs:', len(date12_list))
-    print('number of dates:', len(date_list))
+def print_gaps(date_list, lack_ref, lack_sec):
+    if len(lack_ref)>0:
+        print('Dates not as reference: {}'.format(np.array(date_list)[lack_ref]))
+    if len(lack_sec)>0:
+        print('Dates not as secondary: {}'.format(np.array(date_list)[lack_sec]))
+    return
 
 
-    ## check rank deficiency. It will be rank deficient if num of networks > 1
-    check_rank(A)
-
-    ## get the number of pairs for each acquisition; find the probable gap(s)
-    npairs = find_npair(A)
-
-    ## Find and group the network(s). The best case is to have only one fully connected network!
-    nets, date_groups, date12_groups = find_networks(A, date_list, date12_list, s1_dict)
-
-
-    ## Plot the num of pairs
+def plot_num_pairs(nets, npairs, name, show=False):
     colors=plt.rcParams['axes.prop_cycle'].by_key()['color']
     plt.figure(figsize=[7,3.5])
     ax = plt.subplot(1,1,1)
@@ -273,19 +237,20 @@ def main(inps, show=False):
     ax.set_xlabel('Dates of SLC')
     ax.set_ylabel('Num of pairs')
     plt.legend(loc='lower right')
-    plt.savefig('numPairs_{}.pdf'.format(inps.name), bbox_inches='tight')
+    plt.savefig('numPairs_{}.pdf'.format(name), bbox_inches='tight')
     if show:
         plt.show()
 
 
-    ## Plot the network
+def plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, show=False):
+    colors=plt.rcParams['axes.prop_cycle'].by_key()['color']
     plt.figure(figsize=[10,4.5])
     ax = plt.subplot(1, 1, 1)
     srange_list_all = []
     for i, net in enumerate(nets):
         # the y-axis is starting range (although the variable in `plot_network()` corresponds to `pbase`)
         np.random.seed(10)  # fix a random seed
-        spread=inps.spread	# random spread for starting range in meter (just for visualization purpose)
+        spread=float(spread)	# random spread for starting range in meter (just for visualization purpose)
         srange_list = []
         for dd in date_groups[i]:
             range0_iw1 = s1_dict[dd][2]
@@ -320,21 +285,60 @@ def main(inps, show=False):
     ax = pp.auto_adjust_xaxis_date(ax, datevector, fontsize=p_dict['fontsize'], every_year=p_dict['every_year'])[0]
     ax = pp.auto_adjust_yaxis(ax, srange_list_all, fontsize=p_dict['fontsize'])
     ax.set_title('Show the network gap(s)')
-    plt.savefig('networkCheck_{}.pdf'.format(inps.name), bbox_inches='tight')
+    plt.savefig('networkCheck_{}.pdf'.format(name), bbox_inches='tight')
     if show:
         plt.show()
 
 
-    ## Print other acquisitions with low number of pairs
-    print(' ======= Acquisitions with only 1 pairs =======')
-    tmp_dates = dates_with_Npairs(date_list, npairs, 1)
+######################################################################
 
-    print(' ======= Acquisitions with only 2 pairs =======')
-    tmp_dates = dates_with_Npairs(date_list, npairs, 2)
+def main(inps):
 
-    print(' ======= Acquisitions with only 3 pairs =======')
-    tmp_dates = dates_with_Npairs(date_list, npairs, 3)
+    ## Get the version and starting ranges
+    s1_dict = read_s1_version(inps.s1_version)
 
+
+    ## Get the date12 and date lists:
+    if inps.src == 1:
+        sep = '_'
+        print('Reading design matrix from: {}'.format(inps.dir))
+        dir_list = glob.glob(inps.dir, '*{}*'.format(sep))
+        A, date12_list ,date_list = readListFile(dir_list, sep)
+    elif inps.src == 2:
+        if inps.name == 'unw':
+            prestr = 'config_igram_unw_'
+            sep = '_'
+        elif inps.name == 'ion':
+            prestr = 'config_unwrap_ion_'
+            sep = '-'
+        print('Reading design matrix from: {}'.format(inps.listfile))
+        A, date12_list ,date_list = readListFile(inps.listfile, prestr, sep)
+    elif inps.src == 3:
+        print('Reading design matrix from: {}'.format(inps.ifgfile))
+        A, date12_list, date_list = readStackHDF5(inps.ifgfile)
+    print('')
+    print('number of pairs:', len(date12_list))
+    print('number of dates:', len(date_list))
+
+
+    ## check rank deficiency. It will be rank deficient if num of networks > 1
+    lack_ref, lack_sec = check_rank(A)
+    print_gaps(date_list, lack_ref, lack_sec)
+
+
+    ## get the number of pairs for each acquisition; find the probable gap(s)
+    npairs = find_npair(A)
+
+    ## Find and group the network(s). The best case is to have only one fully connected network!
+    nets, date_groups, date12_groups = find_networks(A, date_list, date12_list, s1_dict=None)
+
+
+    ## Plot number of pairs for each date
+    plot_num_pairs(nets, npairs, inps.name, show=False)
+
+
+    ## Plot the network
+    plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, inps.spread, inps.name, show=False)
 
 
 ######################################################################

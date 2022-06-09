@@ -68,7 +68,7 @@ def cmdLineParse():
             help = 'Averaged fault-perpendicular distance bin (km). (default: %(default)s km)')
     parser.add_argument('--shift', dest='shift', type=float, default=50.0,
             help = 'Approx. center of the fault, set as the distance origin (km). (default: %(default)s km)')
-    parser.add_argument('-c', '--binsize', dest='cmap', type=str, default='RdYlBu_r',
+    parser.add_argument('-c', '--cmap', dest='cmap', type=str, default='RdYlBu_r',
             help = 'output figure colormap. (default: %(default)s)')
     parser.add_argument('--sub-lat', dest='sub_lat', type=float, nargs=2, default=[None, None],
             help = 'Subset of latitudes; [lat_min, lat_max] (degree). (default: %(default)s)')
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     inps.proj_dir  = os.path.expanduser(os.getcwd())
     inps.pic_dir   = os.path.expanduser(f'{inps.pic_dir}')
     inps.geom_file = os.path.expanduser(f'{inps.geom_file}')
-    inps.velo_file = os.path.expanduser(f'{inps.velo_file}')
+    inps.velo_file = os.path.expanduser(f'{inps.infile}')
     inps.mask_file = os.path.expanduser(f'{inps.mask_file}')
 
     os.chdir(inps.proj_dir)

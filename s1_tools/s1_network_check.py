@@ -366,13 +366,6 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     disp_min = p_dict['vlim'][0]
     disp_max = p_dict['vlim'][1]
 
-    if p_dict['disp_cbar']:
-        cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
-        norm = mpl.colors.Normalize(vmin=disp_min, vmax=disp_max)
-        cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
-        cbar.ax.tick_params(labelsize=p_dict['fontsize'])
-        cbar.set_label(p_dict['cbar_label'], fontsize=p_dict['fontsize'], rotation=270, labelpad=25)
-
     # Dot - SAR Acquisition
     if idx_date_keep:
         x_list = [dates[i] for i in idx_date_keep]
@@ -380,7 +373,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
         if isinstance(p_dict['markercolor'], str):
             ax.plot(x_list, y_list, 'ko', alpha=0.7, ms=p_dict['markersize'], mfc=p_dict['markercolor'])
         else:
-            ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], vmin=disp_min, vmax=disp_max, cmap=p_dict['colormap'],
+            sc = ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], vmin=disp_min, vmax=disp_max, cmap=p_dict['colormap'],
                         alpha=0.7, edgecolors=p_dict['edgecolor'], linewidths=p_dict['linewidths'])
     if idx_date_drop:
         x_list = [dates[i] for i in idx_date_drop]
@@ -421,6 +414,16 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
 
     if p_dict['disp_title']:
         ax.set_title('Interferogram Network', fontsize=p_dict['fontsize'])
+
+    # colorbar
+    if p_dict['disp_cbar']:
+        cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
+        #norm = mpl.colors.Normalize(vmin=disp_min, vmax=disp_max)
+        #cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+        cbar = plt.colorbar(sc, cax=cax, cmap=cmap)
+        cbar.ax.tick_params(labelsize=p_dict['fontsize'])
+        cbar.set_label(p_dict['cbar_label'], fontsize=p_dict['fontsize'], rotation=270, labelpad=25)
+
 
     # axis format
     ax = pp.auto_adjust_xaxis_date(ax, datevector, fontsize=p_dict['fontsize'],

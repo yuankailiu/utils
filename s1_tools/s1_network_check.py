@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from mintpy.utils import ptime
 from mintpy.utils import plot as pp
 from mintpy.objects import ifgramStack
+import matplotlib.cm as cm
 
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -37,10 +38,12 @@ def cmdLineParse():
             help = 'Custom list file containing the pairs, e.g., run_files/run_16_unwrap, run_files/run_20_unwrap_ion')
     parser.add_argument('-d', '--dir', dest='dir', type=str,
             help = 'Directory containing the pair folders, e.g., merged/interferograms/')
-    parser.add_argument('-n', '--name', dest='name', type=str, default='unw',
+    parser.add_argument('-n', '--name', dest='name', type=str, default=None,
             help = 'Name of the ifg stack. (E.g. unw, ion, ... default: %(default)s)')
     parser.add_argument('--spread', dest='spread', type=float, default=0.,
             help = 'Random spread of the starting ranges (meter in y-axis) for visualization. (default: %(default)s)')
+    parser.add_argument('--rangecolor', dest='rangecolor', action='store_true', default=False,
+            help = 'Color the dots with starting ranges rather than number of pairs (default: %(default)s)')
 
     inps = parser.parse_args()
     if len(sys.argv)<1:
@@ -57,10 +60,11 @@ def cmdLineParse():
             inps.src=1
         elif inps.listfile:
             inps.src=2
-            if 'ion' in inps.listfile:
-                inps.name = 'ion'
-            else:
-                inps.name = 'unw'
+            if inps.name is None:
+                if 'ion' in inps.listfile:
+                    inps.name = 'ion'
+                else:
+                    inps.name = 'unw'
         elif inps.ifgfile:
             inps.src=3
         print('Reading ifgram pairs: {}'.format(source[inps.src-1]))
@@ -265,29 +269,10 @@ def print_gaps(date_list, lack_ref, lack_sec):
     return
 
 
-def plot_num_pairs(nets, npairs, name, show=False):
-    colors=plt.rcParams['axes.prop_cycle'].by_key()['color']
-    plt.figure(figsize=[7,3.5])
-    ax = plt.subplot(1,1,1)
-    for i, net in enumerate(nets):
-        x_range = net
-        ax.vlines(x=x_range, ymin=0, ymax=npairs[net], alpha=0.6, linewidth=1, color=colors[i])
-        ax.plot(x_range, npairs[net], "o", markersize=8, alpha=0.6, label='network_{}'.format(i+1))
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.set_ylim([0,None])
-    ax.set_xlabel('Dates of SLC')
-    ax.set_ylabel('Num of pairs')
-    plt.legend(loc='lower right')
-    plt.savefig('numPairs_{}.pdf'.format(name), bbox_inches='tight')
-    if show:
-        plt.show()
-
-
-## modified from mintpy plot_network function
-## now can plot network and mark the gaps. see `find_network_gap.py`
-## to-do: combine plotting funcs down below to this func (2022-3-3 ykl)
 def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop=[], print_msg=True):
+    ## modified from mintpy plot_network function
+    ## now can plot network and mark the gaps. see `find_network_gap.py`
+    ## to-do: combine plotting funcs down below to this func (2022-3-3 ykl)
     """Plot Temporal-Perp baseline Network
     Inputs
         ax : matplotlib axes object
@@ -380,17 +365,6 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     # Ploting
     disp_min = p_dict['vlim'][0]
     disp_max = p_dict['vlim'][1]
-    if cohList is not None:
-        data_min = min(cohList)
-        data_max = max(cohList)
-        if print_msg:
-            print('showing coherence')
-            print('data range: {}'.format([data_min, data_max]))
-            print('display range: {}'.format(p_dict['vlim']))
-
-        # plot low coherent ifgram first and high coherence ifgram later
-        cohList_keep = [cohList[date12List.index(i)] for i in date12List_keep]
-        date12List_keep = [x for _, x in sorted(zip(cohList_keep, date12List_keep))]
 
     if p_dict['disp_cbar']:
         cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
@@ -406,7 +380,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
         if isinstance(p_dict['markercolor'], str):
             ax.plot(x_list, y_list, 'ko', alpha=0.7, ms=p_dict['markersize'], mfc=p_dict['markercolor'])
         else:
-            ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], cmap=p_dict['colormap'],
+            ax.scatter(x_list, y_list, s=p_dict['markersize']**2, marker='o', c=p_dict['markercolor'], vmin=disp_min, vmax=disp_max, cmap=p_dict['colormap'],
                         alpha=0.7, edgecolors=p_dict['edgecolor'], linewidths=p_dict['linewidths'])
     if idx_date_drop:
         x_list = [dates[i] for i in idx_date_drop]
@@ -441,7 +415,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
             val_norm = (val - disp_min) / (disp_max - disp_min)
             ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=cmap(val_norm))
         elif p_dict['linecolor'] is not False:
-            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=p_dict['linecolor'])
+            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=p_dict['linecolor'], vmin=disp_min, vmax=disp_max)
         else:
             ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c='k')
 
@@ -470,52 +444,89 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     return ax, cbar
 
 
-def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, show=False):
-    colors=plt.rcParams['axes.prop_cycle'].by_key()['color']
-    plt.figure(figsize=[10,4.5])
-    ax = plt.subplot(1, 1, 1)
-    srange_list_all = []
+def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, range_color=False):
+    fig, ax = plt.subplots(figsize=[14, 8], nrows=2, sharex=True, gridspec_kw={'height_ratios':[2, 1], 'hspace':0.02}, constrained_layout=True)
+
+    colors_l = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    #colors_e = iter(cm.rainbow(np.linspace(0, 1, 7)))
+
+    cmap_npairs = 'summer_r'
+    cmap_srange = 'rainbow'
+
+    srange_list = []
     for i, net in enumerate(nets):
         # the y-axis is starting range (although the variable in `plot_network()` corresponds to `pbase`)
-        np.random.seed(10)  # fix a random seed
+        np.random.seed(10)      # fix a random seed
         spread=float(spread)	# random spread for starting range in meter (just for visualization purpose)
-        srange_list = []
+        if spread != 0.0:
+            ylabel = 'IW1 starting range [m]\n(±{}m random spread for visual.)'.format(spread)
+        else:
+            ylabel = 'IW1 starting range [m]'
+        sranges = []
         for dd in date_groups[i]:
             range0_iw1 = s1_dict[dd][2]
-            srange_list.append(range0_iw1 + spread*2*(np.random.rand()-0.5))
-        srange_list_all.extend(srange_list)
+            sranges.append(range0_iw1 + spread*2*(np.random.rand()-0.5))
+        srange_list.append(sranges)
+        srange_list_all = sum(srange_list, [])
+
+
+    for i, (net, sranges) in enumerate(zip(nets, srange_list)):
+        if range_color:
+            markercolors = np.array(sranges)
+            clabel       = 'IW1 starting ranges [m]'
+            cmap         = cmap_srange
+            vlim         = [np.min(srange_list_all), np.max(srange_list_all)]
+            print('Min/Max starting ragens in IW1 [m]: {} {}'.format(vlim[0], vlim[1]))
+        else:
+            markercolors = np.array(npairs[net])
+            clabel = 'Number of pairs'
+            cmap = cmap_npairs
+            vlim = [1, np.max(npairs)]
+
         p_dict={'fontsize'      :   16,
                 'linewidth'     :   2,
                 'linewidths'    :   1.2,
                 'markersize'    :   10,
                 'transparency'  :   0.4,
-                'markercolor'   :   npairs[net], # np.delete(npairs, gaps); TO-DO
-                'edgecolor'     :   colors[i],
-                'linecolor'     :   colors[i],
+                'markercolor'   :   markercolors,
+                'edgecolor'     :   colors_l[i],
+                'linecolor'     :   colors_l[i],
                 'cbar_label'    :   '',
-                'colormap'      :   'summer_r',
-                'vlim'          :   [1,max(npairs)],
-                'ylabel'        :   'IW1 starting range (m)\n(±{}m random spread for visual.)'.format(spread),
-                'disp_legend'   :  False}
+                'colormap'      :   cmap,
+                'vlim'          :   vlim,
+                'ylabel'        :   ylabel,
+                'disp_legend'   :   False}
 
-        # TO-DO: how can the date12List_drop be useful??
-        date12List_drop=[]   # 20150807_20160215
+        # 1. plot the network
+        date12List_drop=[]   # TO-DO: how can the date12List_drop be useful??
+        ax[0], cbar = plot_network(ax[0], date12_groups[i], date_groups[i], sranges, p_dict, date12List_drop)
 
-        # plot it
-        ax, cbar = plot_network(ax, date12_groups[i], date_groups[i], srange_list, p_dict, date12List_drop)
+        # 2. plot the num of pairs
+        date_group, datevector = ptime.date_list2vector(date_groups[i])
+        ax[1].vlines(x=date_group, ymin=0, ymax=npairs[net], alpha=0.6, linewidth=1.3, color=colors_l[i], label='net_{}'.format(i+1))
+        #ax[1].plot(date_group, npairs[net], "o", markersize=8, alpha=0.6)
+        ax[1].set_ylim([0, None])
+        ax[1].set_xlabel('Year')
+        ax[1].set_ylabel('Num of pairs\nfor each date')
+        ax[1].legend(loc='lower right')
 
     cbar.set_ticks(np.arange(1,max(npairs)))
-    cbar.ax.set_yticklabels(np.arange(1,max(npairs)).astype(str))
-    cbar.set_label('Number of pairs', fontsize=p_dict['fontsize'], rotation=270, labelpad=35)
-    #ax.axes.yaxis.set_visible(False)
-    dates, datevector = ptime.date_list2vector(date_list)
+    cbar.ax.set_yticklabels(np.arange(1, np.max(npairs)).astype(str))
+    cbar.set_label(clabel, fontsize=p_dict['fontsize'], rotation=270, labelpad=30)
 
-    ax = pp.auto_adjust_xaxis_date(ax, datevector, fontsize=p_dict['fontsize'], every_year=p_dict['every_year'])[0]
-    ax = pp.auto_adjust_yaxis(ax, srange_list_all, fontsize=p_dict['fontsize'])
-    ax.set_title('Show the network gap(s)')
-    plt.savefig('networkCheck_{}.pdf'.format(name), bbox_inches='tight')
-    if show:
-        plt.show()
+    blank_ax = make_axes_locatable(ax[1]).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
+    blank_ax.axis('off')
+
+    ax[0] = pp.auto_adjust_yaxis(ax[0], srange_list_all, fontsize=p_dict['fontsize'])
+    ax[0].set_title('Interferogram network: {}'.format(name))
+
+    datevector = ptime.date_list2vector(date_list)[1]
+    ax[1] = pp.auto_adjust_xaxis_date(ax[1], datevector, fontsize=p_dict['fontsize'], every_year=p_dict['every_year'])[0]
+    ax[0] = pp.auto_adjust_xaxis_date(ax[0], datevector, fontsize=p_dict['fontsize'], every_year=p_dict['every_year'])[0]
+
+    plt.savefig('networkCheck_{}.pdf'.format(inps.name), bbox_inches='tight')
+
+    return
 
 
 ######################################################################
@@ -533,12 +544,12 @@ def main(inps):
         dir_list = glob.glob(inps.dir, '*{}*'.format(sep))
         A, date12_list ,date_list = readListFile(dir_list, sep)
     elif inps.src == 2:
-        if inps.name == 'unw':
-            prestr = 'config_igram_unw_'
-            sep = '_'
-        elif inps.name == 'ion':
+        if inps.name == 'ion':
             prestr = 'config_unwrap_ion_'
             sep = '-'
+        else:
+            prestr = 'config_igram_unw_'
+            sep = '_'
         print('Reading design matrix from: {}'.format(inps.listfile))
         A, date12_list ,date_list = readListFile(inps.listfile, prestr, sep)
     elif inps.src == 3:
@@ -561,12 +572,8 @@ def main(inps):
     nets, date_groups, date12_groups = find_networks(A, date_list, date12_list, s1_dict=None)
 
 
-    ## Plot number of pairs for each date
-    plot_num_pairs(nets, npairs, inps.name, show=False)
-
-
     ## Plot the network
-    call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, inps.spread, inps.name, show=False)
+    call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, inps.spread, inps.name, inps.rangecolor)
 
 
 ######################################################################

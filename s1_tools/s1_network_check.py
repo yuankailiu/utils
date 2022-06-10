@@ -365,7 +365,6 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     # Ploting
     disp_min = p_dict['vlim'][0]
     disp_max = p_dict['vlim'][1]
-    print(disp_min, disp_max)
 
     if p_dict['disp_cbar']:
         cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
@@ -426,9 +425,6 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     # axis format
     ax = pp.auto_adjust_xaxis_date(ax, datevector, fontsize=p_dict['fontsize'],
                                 every_year=p_dict['every_year'])[0]
-    print('**************')
-    ax = pp.auto_adjust_yaxis(ax, pbaseList, fontsize=p_dict['fontsize'])
-    print('**************')
     ax.set_xlabel(p_dict['xlabel'], fontsize=p_dict['fontsize'])
     ax.set_ylabel(p_dict['ylabel'], fontsize=p_dict['fontsize'])
     ax.tick_params(which='both', direction='in', labelsize=p_dict['fontsize'],

@@ -481,7 +481,7 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
                     group_keys[g].append(j+1)
                     break
 
-
+    print(group_keys)
 
     for i, (net, sranges) in enumerate(zip(nets, srange_list)):
         if range_color:

@@ -475,9 +475,10 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
     srange_unique = sorted(list(set(srange_list_all)))
     group_keys = [[]] * len(srange_list)
     for g in range(len(srange_list)):
-        for i in range(len(srange_list[g])):
+        sranges = sum(srange_list[g], [])
+        for i in range(len(sranges)):
             for j in range(len(srange_unique)):
-                if srange_list[g][i] == srange_unique[j]:
+                if sranges[i] == srange_unique[j]:
                     group_keys[g].append(j+1)
                     break
 

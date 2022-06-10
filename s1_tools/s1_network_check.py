@@ -415,15 +415,6 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     if p_dict['disp_title']:
         ax.set_title('Interferogram Network', fontsize=p_dict['fontsize'])
 
-    # colorbar
-    if p_dict['disp_cbar']:
-        cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
-        #norm = mpl.colors.Normalize(vmin=disp_min, vmax=disp_max)
-        #cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
-        cbar = plt.colorbar(sc, cax=cax, cmap=cmap)
-        cbar.ax.tick_params(labelsize=p_dict['fontsize'])
-        cbar.set_label(p_dict['cbar_label'], fontsize=p_dict['fontsize'], rotation=270, labelpad=25)
-
 
     # axis format
     ax = pp.auto_adjust_xaxis_date(ax, datevector, fontsize=p_dict['fontsize'],
@@ -443,7 +434,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
         dash_line  = mpl.lines.Line2D([], [], color='k', ls='dashed', label='Ifgram dropped')
         ax.legend(handles=[solid_line, dash_line])
 
-    return ax, cbar
+    return ax
 
 
 def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, range_color=False):
@@ -512,8 +503,16 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
         ax[1].set_ylabel('Num of pairs\nfor each date')
         ax[1].legend(loc='lower right')
 
-    cbar.set_ticks(np.arange(1,max(npairs)))
-    cbar.ax.set_yticklabels(np.arange(1, np.max(npairs)).astype(str))
+
+    # colorbar
+    cax = make_axes_locatable(ax[0]).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
+    norm = mpl.colors.Normalize(vmin=vlim[0], vmax=vlim[1])
+    cbar = mpl.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+    cbar.ax.tick_params(labelsize=p_dict['fontsize'])
+    cbar.set_label(p_dict['cbar_label'], fontsize=p_dict['fontsize'], rotation=270, labelpad=25)
+
+    #cbar.set_ticks(np.arange(1,max(npairs)))
+    #cbar.ax.set_yticklabels(np.arange(1, np.max(npairs)).astype(str))
     cbar.set_label(clabel, fontsize=p_dict['fontsize'], rotation=270, labelpad=30)
 
     blank_ax = make_axes_locatable(ax[1]).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])

@@ -471,10 +471,12 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
         srange_list_all = sum(srange_list, [])
 
 
+    # unique groups of diff startign ranges
+    srange_unique = sorted(list(set(srange_list_all)))
     group_keys = []
     for i in range(len(srange_list_all)):
-        for j in range(len(srange_list)):
-            if srange_list_all[i] == srange_list[j]:
+        for j in range(len(srange_unique)):
+            if srange_list_all[i] == srange_unique[j]:
                 group_keys.append(j+1)
                 break
 

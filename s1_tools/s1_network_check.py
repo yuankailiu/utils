@@ -472,8 +472,8 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
 
 
     group_keys = []
-    for i in range(srange_list_all):
-        for j in range(srange_list):
+    for i in range(len(srange_list_all)):
+        for j in range(len(srange_list)):
             if srange_list_all[i] == srange_list[j]:
                 group_keys.append(j+1)
                 break

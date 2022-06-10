@@ -515,6 +515,8 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
         cbar.set_ticks(np.arange(1,max(npairs)))
         cbar.ax.set_yticklabels(np.arange(1, np.max(npairs)).astype(str))
 
+    cbar.set_label(clabel, fontsize=p_dict['fontsize'], rotation=270, labelpad=30)
+
     blank_ax = make_axes_locatable(ax[1]).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
     blank_ax.axis('off')
 

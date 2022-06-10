@@ -446,7 +446,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
 
 
 def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_dict, spread, name, range_color=False):
-    fig, ax = plt.subplots(figsize=[14, 8], nrows=2, sharex=True, gridspec_kw={'height_ratios':[2, 1], 'hspace':0.02}, constrained_layout=True)
+    ax = plt.subplots(figsize=[14, 8], nrows=2, sharex=True, gridspec_kw={'height_ratios':[2, 1], 'hspace':0.02}, constrained_layout=True)[1]
 
     colors_l = plt.rcParams['axes.prop_cycle'].by_key()['color']
     #colors_e = iter(cm.rainbow(np.linspace(0, 1, 7)))
@@ -471,12 +471,22 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
         srange_list_all = sum(srange_list, [])
 
 
+    group_keys = []
+    for i in range(srange_list_all):
+        for j in range(srange_list):
+            if srange_list_all[i] == srange_list[j]:
+                group_keys.append(j+1)
+                break
+
+
     for i, (net, sranges) in enumerate(zip(nets, srange_list)):
         if range_color:
-            markercolors = np.array(sranges)
-            clabel       = 'IW1 starting ranges [m]'
+            markercolors = np.array(group_keys)
+            #clabel       = 'IW1 starting ranges [m]'
+            clabel       = 'Starting range group #'
             cmap         = cmap_srange
-            vlim         = [np.min(srange_list_all), np.max(srange_list_all)]
+            #vlim         = [np.min(srange_list_all), np.max(srange_list_all)]
+            vlim         = [np.min(group_keys), np.max(group_keys)]
             print('Min/Max starting ragens in IW1 [m]: {} {}'.format(vlim[0], vlim[1]))
         else:
             markercolors = np.array(npairs[net])

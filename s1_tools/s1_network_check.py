@@ -365,6 +365,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
     # Ploting
     disp_min = p_dict['vlim'][0]
     disp_max = p_dict['vlim'][1]
+    print(disp_min, disp_max)
 
     if p_dict['disp_cbar']:
         cax = make_axes_locatable(ax).append_axes("right", p_dict['cbar_size'], pad=p_dict['cbar_size'])
@@ -415,7 +416,7 @@ def plot_network(ax, date12List, dateList, pbaseList, p_dict={}, date12List_drop
             val_norm = (val - disp_min) / (disp_max - disp_min)
             ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=cmap(val_norm))
         elif p_dict['linecolor'] is not False:
-            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=p_dict['linecolor'], vmin=disp_min, vmax=disp_max)
+            ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c=p_dict['linecolor'])
         else:
             ax.plot(x, y, '-', lw=p_dict['linewidth'], alpha=transparency, c='k')
 

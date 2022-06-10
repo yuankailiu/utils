@@ -473,22 +473,24 @@ def call_plot_networks(nets, npairs, date_list, date_groups, date12_groups, s1_d
 
     # unique groups of diff startign ranges
     srange_unique = sorted(list(set(srange_list_all)))
-    group_keys = []
-    for i in range(len(srange_list_all)):
-        for j in range(len(srange_unique)):
-            if srange_list_all[i] == srange_unique[j]:
-                group_keys.append(j+1)
-                break
+    group_keys = [[]] * len(srange_list)
+    for g in range(len(srange_list)):
+        for i in range(len(srange_list[g])):
+            for j in range(len(srange_unique)):
+                if srange_list[i] == srange_unique[j]:
+                    group_keys[g].append(j+1)
+                    break
+
 
 
     for i, (net, sranges) in enumerate(zip(nets, srange_list)):
         if range_color:
-            markercolors = np.array(group_keys)
+            markercolors = np.array(group_keys[i])
             #clabel       = 'IW1 starting ranges [m]'
             clabel       = 'Starting range group #'
             cmap         = cmap_srange
             #vlim         = [np.min(srange_list_all), np.max(srange_list_all)]
-            vlim         = [np.min(group_keys), np.max(group_keys)]
+            vlim         = [np.min(group_keys[i]), np.max(group_keys[i])]
             print('Min/Max starting ragens in IW1 [m]: {} {}'.format(vlim[0], vlim[1]))
         else:
             markercolors = np.array(npairs[net])

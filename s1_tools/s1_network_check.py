@@ -22,13 +22,21 @@ plt.rcParams.update({'font.size': 16})
 
 
 ######################################################################
+EXAMPLE = """example:
+  s1_network_check.py -v s1_version.txt -l run_files/run_16_unwrap
+  s1_network_check.py -v s1_version.txt -l run_files/run_16_unwrap      --spread 50
+  s1_network_check.py -v s1_version.txt -l run_files/run_20_unwrap_ion  --spread 50
+  s1_network_check.py -v s1_version.txt -d merged/interferograms        --spread 50  --name unw
+  s1_network_check.py -v s1_version.txt -i mintpy/inputs/ifgramStack.h5 --spread 50  --name unw
+  s1_network_check.py -v s1_version.txt -i mintpy/inputs/ionStack.h5    --spread 50  --name ion
+"""
 
 def cmdLineParse():
     description = ' Check the network connectivity before running topsStack\n'+\
                   '  Must specify one from [-i IFGFILE], [-l LISTFILE], [-d DIR]'
 
     ## basic input/output files and paths
-    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter, epilog=EXAMPLE)
     parser.add_argument('-v', '--ver', dest='s1_version', type=str, required=True,
             help = 'A text file listing acquisition versions, starting ranges, e.g., s1_version.txt')
     parser.add_argument('-i', '--ifg', dest='ifgfile', type=str,

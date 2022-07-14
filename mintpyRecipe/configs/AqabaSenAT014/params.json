@@ -1,0 +1,43 @@
+{
+    "proc_home"         :   ".",
+    "template"          :   "AqabaSen*.cfg",
+    "isce_proc"         :   "topsStack",
+
+    "__comment_path"    :   "===> Below defines the some paths and locations of the files",
+    "wbd_orig"          :   "/marmot-nobak/ykliu/aqaba/big_dem/wbd_1_arcsec/swbdLat_N25_N35_Lon_E030_E042.wbd",
+    "dem_orig"          :   "/marmot-nobak/ykliu/aqaba/big_dem/dem_1_arcsec/demLat_N25_N35_Lon_E030_E042.dem.wgs84",
+    "dem_out"           :   "inputs/srtm.dem",
+    "geom_file"         :   "inputs/geometryGeo.h5",
+    "ifgs_file"         :   "inputs/ifgramStack.h5",
+    "tcoh_file"         :   "temporalCoherence.h5",
+    "tcoh_mask"         :   "maskTempCoh_high.h5",
+    "water_mask"        :   "waterMask.h5",
+    "rms_dir"           :   "rms/",
+    "plotnetwork_log"   :   "plot_SBApp.log",
+    "velo_dir"          :   "velocity_out/",
+    "mintpy_pic"        :   "pic/",
+    "velo_pic"          :   "velo_pic/",
+
+    "__comment_proc"    :   "===> Below deifnes parameters relavent to mintpy processing",
+    "tcoh_threshold"    :   0.93,
+    "euler_cartesian"   :   [1.154, -0.136, 1.444],
+
+    "__comment_plot"    :   "===> Below defines the parameters for plotting network, and velocity",
+    "velo_cmap"         :   "RdYlBu_r",
+    "tcoh_cmap"         :   "romanian_r",
+    "lon_min"           :   "None",
+    "lon_max"           :   "None",
+    "lat_min"           :   "None",
+    "lat_max"           :   "None",
+    "velo_alpha"        :   0.8,
+    "shade_exag"        :   0.02,
+
+    "__comment_vlim"    :   "===> Below defines the colormap limit in plotting velocity fields",
+    "vm_big"            :   [-8, 8],
+    "vm_mid"            :   [-5, 5],
+    "vm_sma"            :   [-2, 2],
+    "vm_STD"            :   [0, 1.0],
+    "vm_AMP"            :   [0, 16],
+    "vm_SET"            :   [-0.2, 0.2],
+    "vm_ERA"            :   [-2, 2]
+}

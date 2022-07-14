@@ -14,21 +14,32 @@ export LANG="en_US.utf-8"
 export PS1="\[\033[01;35m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "
 
 # User specific environment and startup programs
+export TOOL_DIR=$HOME/apps
 export PATH=$PATH:$HOME/bin
-export PATH=$PATH:$HOME/apps/utils/S1_tools
-export PYTHONPATH=$PYTHONPATH:$HOME/apps/utils
+export PATH=$PATH:$TOOL_DIR/utils/s1_tools:$TOOL_DIR/utils/bash_codes:$TOOL_DIR/utils/sarut:$TOOL_DIR/utils/mintpyRecipe
+export PATH=$PATH:~zebker/bin/
+export PATH=$PATH:$TOOL_DIR/ssara_client
+export PYTHONPATH=$PYTHONPATH:$TOOL_DIR/utils
+export PYTHONPATH=$PYTHONPATH:$TOOL_DIR/PlateTectonic
+export MPLCONFIGDIR=$HOME/.matplotlib
 
+# Zebker's code
+export PROC_HOME=/home/zebker/proc_home
 
 
 ##------------ Define isce2 environment variable ISCE_VERSION and make alias -------------------##
 # load isce2 core module:  https://github.com/isce-framework/isce2
-alias load_insar='conda activate insar; export ISCE_VERSION=""; echo "load InSAR modules and self-installed isce2 from isce-framework"; source ~/apps/conda_envs/isce2/config.rc'
+alias load_insar='conda activate insar; export ISCE_VERSION=""; echo "load InSAR modules and self-installed isce2 from isce-framework"; source $TOOL_DIR/conda_envs/insar/config.rc'
 
 # load isce2 core module:  Cunren's code (no need for now)
-alias load_isce2_cunrenl='conda activate insar; export ISCE_VERSION="_cunrenl"; echo "load self-installed isce2 from cunren"; source ~/apps/conda_envs/isce2/config.rc'
+alias load_isce2_cunrenl='conda activate insar; export ISCE_VERSION="_cunrenl"; echo "load self-installed isce2 from cunren"; source $TOOL_DIR/conda_envs/insar/config.rc'
 
 # load isce2 core module:  pre-compiled version by Lijun
 alias load_isce2_geomod='echo "load pre-compiled isce2 from Lijun"; source /home/geomod/apps/rhel7/isce2.rc'
+
+# ATBD: NISAR Solid Earth Jupyter notebooks
+alias load_atbd='conda activate atbd; source $TOOL_DIR/ATBD/docs/config.rc'
+
 
 ##------------------------------- InSAR processing tools --------------------------------------##
 # Load the InSAR env and isce2 core module
@@ -37,7 +48,7 @@ load_insar
 # load_isce2_geomod
 
 # Load FRinGE core modules
-alias load_fringe='conda activate fringe; source ~/apps/conda_envs/fringe/config.rc'
+alias load_fringe='conda activate fringe; source $TOOL_DIR/conda_envs/fringe/config.rc'
 # load_fringe
 
 
@@ -61,13 +72,17 @@ alias ll='ls -l --color=auto'
 alias ls='ls --color=auto'
 alias mv='mv -i'
 alias p='pwd'
+alias pp='pwd -P'
 alias rm='rm -i'
 alias sbashrc='source ~/$BASHRC'
 alias sbashpr='source ~/.bash_profile'
-alias sinsarrc='source ~/apps/conda_envs/insar/config.rc'
-alias sfringerc='source ~/apps/conda_envs/fringe/config.rc'
-alias ssh='ssh -X'
+alias ssh='ssh -XY'
 alias vi='vim'
 alias which='alias | /usr/bin/which --tty-only --read-alias --show-dot --show-tilde'
+alias cisce='rm -rf isce.log topsProc.xml topsinsar.log PICKLE'
+alias cona='conda activate'
+alias cond='conda deactivate'
+function igrep() { grep -rn --color --include=*.{py,sh,txt,cfg,m,cpp,h} "$@" .; }
+function igrepy() { grep -rn --color --include=*.{ipynb,py,sh,txt,cfg,m,cpp,h} "$@" .; }
 
 

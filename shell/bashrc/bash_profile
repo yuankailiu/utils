@@ -20,6 +20,7 @@ export PATH=${PATH}:$CONDAPATH/bin
 export PATH=${PATH}:$CONDAPATH/condabin
 export PYTHON3DIR=${TOOL_DIR}/miniconda3
 export PATH=${PATH}:${PYTHON3DIR}/bin
+export MPLCONFIGDIR=$HOME/.matplotlib
 
 
 # >>> conda initialize >>>
@@ -47,18 +48,14 @@ ARIUS=arius
 KAMB=kamb.gps.caltech.edu
 HOST=$(hostname)
 
-if [ $HOST == $KAMB ]
-then
-    BASHRC=.bashrc_kamb
-    echo "You are now on KAMB (Simons group); source $BASHRC >>"
-    if [ -f $HOME/$BASHRC ]; then . $HOME/$BASHRC; fi
-fi
-
-
 if [ $HOST == $ARIUS ]
 then
     BASHRC=.bashrc_arius
     echo "You are now on ARIUS (Ross group); source $BASHRC >>"
+    if [ -f $HOME/$BASHRC ]; then . $HOME/$BASHRC; fi
+else
+    BASHRC=.bashrc_kamb
+    echo "You are now Simons machines; source $BASHRC >>"
     if [ -f $HOME/$BASHRC ]; then . $HOME/$BASHRC; fi
 fi
 
@@ -98,5 +95,4 @@ function kport(){
             done
     fi
 }
-
 

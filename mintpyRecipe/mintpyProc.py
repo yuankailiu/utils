@@ -11,6 +11,7 @@ import os
 import sys
 import json
 import glob
+import shutil
 import argparse
 import numpy as np
 from datetime import datetime
@@ -33,32 +34,44 @@ from isceobj.Alos2Proc.Alos2ProcPublic import waterBodyRadar
 # mintpy
 import mintpy
 import mintpy.workflow
-from mintpy import smallbaselineApp
+from mintpy import smallbaselineApp, bulk_plate_motion
 from mintpy.objects import datasetUnitDict
 from mintpy.utils import readfile, writefile
 
 
-STEPS = {   'load'          : ['load', 'loading', 'load_data'],
-            'inversion'     : ['inversion', 'invert', 'network_inversion'],
-            'corrections'   : ['corrections'],
-            'topographic'   : ['demErr', 'topo', 'topographic', 'topographic_residual'],
-            'residual'      : ['residual', 'residual_RMS'],
-            'deramp'        : ['deramp', 'deramping'],
-            'ts2velo'       : ['ts2velo', 'timeseries2velocity'],
-            'PMM'           : ['bulk_plate_motion', 'plate_motion', 'PMM'],
-            'plot_velo'     : ['plot_velocity', 'plot_velo'],
-        }
+STEPS =     {   'load'          : ['load', 'loading', 'load_data'],
+                'network'       : ['network', 'modify_network'],
+                'inversion'     : ['inversion', 'invert', 'network_inversion'],
+                'corrections'   : ['corrections'],
+                'topographic'   : ['demErr', 'topo', 'topographic', 'topographic_residual'],
+                'residual'      : ['residual', 'residual_RMS'],
+                'deramp'        : ['deramp', 'deramping'],
+                'ts2velo'       : ['ts2velo', 'timeseries2velocity'],
+                'PMM'           : ['bulk_plate_motion', 'plate_motion', 'PMM'],
+            }
+
+STEPS_SUPP= {   'plot_network'  : ['plot_network'],
+                'plot_loaded'   : ['plot_loaded'],
+                'plot_velo'     : ['plot_velo'],
+            }
 
 stepmsg = ''
 for i, (key, value) in enumerate(STEPS.items()):
     stepmsg += '{}.  {:20s}{} \n'.format(i+1, key, str(value))
-
 STEP_HELP = f"""Command line options for steps processing with names are chosen from the following list:
 
 {stepmsg}
 
 """
 
+stepmsg = ''
+for i, (key, value) in enumerate(STEPS_SUPP.items()):
+    stepmsg += '{}.  {:20s}{} \n'.format(i+1, key, str(value))
+STEP_HELP_MORE = f"""Command line options for supplementary steps (e.g., plotting):
+
+{stepmsg}
+
+"""
 
 
 def create_parser():
@@ -69,7 +82,7 @@ def create_parser():
             help='custom json with specifications of running MintPym, e.g., params.json')
     parser.add_argument('-i', '--indir', dest='inDir', type=str, default='./inputs',
             help = 'Inputs directory containing geometryRadar.h5, ifgramStack.h5.')
-    step = parser.add_argument_group('Steps of processing (dosteps)', STEP_HELP)
+    step = parser.add_argument_group('Steps of processing (dosteps)', STEP_HELP+STEP_HELP_MORE)
     step.add_argument('--do','--dosteps', dest='dosteps', type=str, nargs='+', default=[],
                       help='run processing at the named step(s)')
     return parser
@@ -82,72 +95,65 @@ def cmd_line_parse(iargs=None):
         print('Parameter JSON file {} does not exist'.format(inps.json_file))
         parser.print_help()
         sys.exit(1)
-    if not len(inps.dosteps) == 0:
-        print('Run the follow stages: {}'.format(inps.dosteps))
-    else:
+    if len(inps.dosteps) == 0:
         print('No steps specified: {}'.format(inps.dosteps))
         sys.exit(1)
     return inps
 
 
-def copy_add_dset2h5(file1, file2, copy_dset, outfile):
-    """
-    Copy a dataset from file1 and add it to file2
-    Will save to a new outfile, using the attr of file2
-    """
-    # search dset from file1
-    dsets1 = readfile.get_dataset_list(file1)
-    for d in dsets1:
-        if d == copy_dset:
-            print('copy {} from {} to {}'.format(d, file1, file2))
-            copy  = readfile.read(file1, datasetName=d)[0]
 
-    # get all dsets from file2
-    dsets2  = readfile.get_dataset_list(file2)
-    outdict = dict()
-    for d in dsets2:
-        outdict[d] = readfile.read(file2, datasetName=d)[0]
-        length, width = outdict[d].shape
-
-    # add copy dset to outdict
-    outdict[copy_dset] = copy
-
-    # metadata and the units
-    attr1 = readfile.read_attribute(file1)
-    attr2 = readfile.read_attribute(file2)
-    if attr1 != attr2: print('Attribute from the two files are different, use file2 attributes for output.')
-    out_attr = attr2
-    ds_name_dict0 = {
-        "azimuthAngle"       : [np.float32, (length, width), None],
-        "height"             : [np.float32, (length, width), None],
-        "incidenceAngle"     : [np.float32, (length, width), None],
-        "slantRangeDistance" : [np.float32, (length, width), None],
-        "latitude"           : [np.float32, (length, width), None],
-        "longitude"          : [np.float32, (length, width), None],
-        "shadowMask"         : [bool,       (length, width), None],
-        "waterMask"          : [bool,       (length, width), None],
-        }
-    unit_dict = dict()
-    ds_name_dict = dict()
-    for d in outdict.keys():
-        if d in datasetUnitDict.keys():
-            unit_dict[d] = datasetUnitDict[d]
-        else:
-            unit_dict[d] = '1'
-        if d in ds_name_dict0:
-            ds_name_dict[d] = ds_name_dict0[d]
-        else:
-            ds_name_dict[d] = [np.float32, (length, width), None]
+#################################################################
+#################################################################
 
 
-    # instantiate the output file
-    writefile.layout_hdf5(outfile, ds_name_dict=ds_name_dict, metadata=out_attr, ds_unit_dict=unit_dict)
+def get_template(jobj):
+    default_cfg = list(set(glob.glob(jobj.template))-set(glob.glob('*_*.cfg')))
+    try:
+        jobj.template = default_cfg[0]
+    except:
+        try:
+            jobj.template = glob.glob('./smallbaselineApp.cfg')[0]
+        except:
+            print('Error: No MintPy template file found!')
+            sys.exit(1)
+    jobj.template = os.path.basename(jobj.template)
+    print('Use template for regular pairs: {}'.format(jobj.template))
 
-    # output the datasets
-    for key, value in outdict.items():
-        print('writing {}  {}'.format(key, value.shape))
-        writefile.write_hdf5_block(outfile, data=value, datasetName=key)
-    return
+    try:
+        jobj.templateIon = glob.glob(jobj.templateIon)[0]
+    except:
+        try:
+            jobj.templateIon = glob.glob(jobj.template)[0]
+        except:
+            try:
+                jobj.templateIon = glob.glob('./smallbaselineApp.cfg')[0]
+            except:
+                print('Error: No MintPy template for ionosphere file found!')
+                sys.exit(1)
+    jobj.templateIon = os.path.basename(jobj.templateIon)
+    print('Use template for ionospheric pairs: {}'.format(jobj.templateIon))
+
+    for outdir in ['inputs', 'pic']:
+        if not os.path.exists(outdir):  os.makedirs(outdir)
+        for cfg in [jobj.template, jobj.templateIon]:
+            print('copy {} to {}/{}'.format(cfg, outdir, cfg))
+            shutil.copyfile(cfg, f'{outdir}/{cfg}')
+    return jobj
+
+
+def read_template_compute(template, key):
+    iDict = readfile.read_template(template)
+    cluster  = iDict['mintpy.compute.cluster']
+    n_worker = iDict['mintpy.compute.numWorker']
+    ram      = iDict['mintpy.compute.maxMemory']
+    if cluster  == 'auto': cluster  = 'none'
+    if n_worker == 'auto': n_worker = 4
+    if ram      == 'auto': ram      = 4.0
+    n_worker = int(n_worker)
+    ram      = float(ram)
+    if key == 'cluster' : return cluster
+    if key == 'n_worker': return n_worker
+    if key == 'ram'     : return ram
 
 
 def run_resamp_wbd(jobj):
@@ -322,11 +328,31 @@ def run_plot_network(template, ifgstacks, cmap_vlist=[0.2, 0.7, 1.0]):
         print()
         print(cmd)
         mintpy.plot_network.main(iargs=iargs)
+
+        exts = ('*.pdf', '*.png')
+        outdir = './pic_orig'
+        files = []
+        for ext in exts:
+            files.extend(glob.glob(ext))
+        if not os.path.exists(outdir):  os.makedirs(outdir)
+        for f in files:
+            shutil.copyfile(f, '{}/{}'.format(outdir, f))
     return
 
 
-def run_ifgram_inversion(template, ifstack, mask, weight):
-    iargs = [ifstack, '-m', mask, '-w', weight, '--update']
+def run_plot_SBApp(script='./2_plot_SBApp.sh'):
+    # This could be improved by calling the python plotting script in MintPy
+    os.system('bash {}'.format(script))
+    return
+
+
+def run_ifgram_inversion(template, ifstack, mask, weight='var', cluster=None, n_worker=None, ram=None):
+    if not cluster:  cluster  = read_template_compute(template, 'cluster')
+    if not n_worker: n_worker = read_template_compute(template, 'n_worker')
+    if not ram:      ram      = read_template_compute(template, 'ram')
+
+    print('Multiprocessing: cluster: {}  num_workers: {}'.format(cluster, n_worker))
+    iargs = [ifstack, '-m', mask, '-w', weight, '--cluster', cluster, '--num-worker', n_worker, '--ram', ram, '--update']
     iargs = list(map(str,iargs))
     cmd   = 'ifgram_inversion.py '+' '.join(iargs)
     print()
@@ -359,21 +385,24 @@ def run_diff(file1, file2, outfile):
     mintpy.diff.main(iargs=iargs)
 
 
-def run_demErr(jobj, file, outfile, bak_dir=False):
+def run_demErr(jobj, file, outfile, cluster=None, n_worker=None, ram=None, bak_dir=False):
     iDict     = readfile.read_template(jobj.template)
     proc_home = os.path.expanduser(jobj.proc_home)
     geom_file = os.path.expanduser(proc_home+'/'+jobj.geom_file)
-    n_worker  = int(iDict['mintpy.compute.numWorker'])
     m_poly    = int(iDict['mintpy.timeFunc.polynomial'])
     m_peri    = [float(n) for n in iDict['mintpy.timeFunc.periodic'].replace(',', ' ').split()]
     velo_model = ['--poly-order', m_poly, '--periodic', *m_peri]
+
+    if not cluster:  cluster  = read_template_compute(jobj.template, 'cluster')
+    if not n_worker: n_worker = read_template_compute(jobj.template, 'n_worker')
+    if not ram:      ram      = read_template_compute(jobj.template, 'ram')
 
     if bak_dir:
         rms_dir = os.path.expanduser(proc_home+'/'+jobj.rms_dir)
         ex_dir  = os.path.expanduser(rms_dir+'/ex/')
         if not os.path.exists(ex_dir): os.makedirs(ex_dir)
 
-    opt = [*velo_model, '-g', geom_file, '--num-worker', n_worker, '--update']
+    opt = [*velo_model, '-g', geom_file, '--cluster', cluster, '--num-worker', n_worker, '--ram', ram, '--update']
     iargs = [file, '-o', outfile] + opt
     iargs = list(map(str,iargs))
     cmd   = 'dem_error.py '+' '.join(iargs)
@@ -431,9 +460,9 @@ def run_timeseries2velocity(jobj, tsfile, outfile, velo_model=None):
         velo_model = ['--poly-order', m_poly, '--periodic', *m_peri]
 
     iargs = [tsfile, *velo_model, '-o', outfile, '--update']
-    if all(elem != 'None' for elem in [refla, reflo]):
+    if all(elem != 'auto' for elem in [refla, reflo]):
         iargs += ['--ref-lalo', refla, reflo]
-    if jobj.ref_date != 'None':
+    if ref_date != 'auto':
         iargs += ['--ref-date', ref_date]
 
     iargs = list(map(str,iargs))
@@ -451,22 +480,20 @@ def run_bulk_plate_motion(jobj, vfile=None):
     cmd   = 'bulk_plate_motion.py '+' '.join(iargs)
     print()
     print(cmd)
-    mintpy.bulk_plate_motion.main(iargs=iargs)
+    bulk_plate_motion.main(iargs=iargs)
     return
 
 
 def run_plot_velo(jobj, file, dataset, vlim=[None,None], title=None, outfile=None, mask=None, update=False):
     picdir = os.path.dirname(outfile)
     base, ext = os.path.basename(file).split('.')
+    if not os.path.exists(picdir):
+        os.makedirs(picdir)
 
-    if title is None:
-        title = str(dataset)
-
-    if outfile is None:
-        outfile = str(base+'.png')
+    if title is None:   title = str(dataset)
+    if outfile is None: outfile = str(base+'.png')
 
     iDict = readfile.read_template(jobj.template)
-
     xmin     = jobj.lon_min
     xmax     = jobj.lon_max
     ymin     = jobj.lat_min
@@ -475,15 +502,16 @@ def run_plot_velo(jobj, file, dataset, vlim=[None,None], title=None, outfile=Non
     dem_file = jobj.dem_out     # 'inputs/srtm.dem'
     refla, reflo = [float(n) for n in iDict['mintpy.reference.lalo'].replace(',', ' ').split()]
 
-    if mask:
-        if mask in ['water']:
-            mask_file = jobj.water_mask  # 'waterMask.h5'
-        elif mask in ['temporal', 'temporalCoherence']:
-            mask_file = jobj.tcoh_mask   # 'maskTempCoh_high.h5', 'maskTempCoh.h5'
-        elif mask in ['connectComp', 'connectedComp', 'connectedComponent']:
-            mask_file = jobj.conn_mask   # 'maskConnComp.h5.h5'
-    else:
-        mask_file = 'no'
+    if not mask:
+        try:
+            mask = jobj.velo_msk
+            if   mask in ['water','auto']:  mask_file = jobj.water_mask  # e.g., waterMask.h5
+            elif mask in ['tempCoh']:       mask_file = jobj.tcoh_mask   # e.g., maskTempCoh.h5
+            elif mask in ['connComp']:      mask_file = jobj.conn_mask   # e.g., maskConnComp.h5
+            elif mask in ['custom']:        mask_file = jobj.cust_mask   # e.g., maskCustom.h5
+            else:                           mask_file = 'no'
+        except:
+            mask_file = 'no'
 
     iargs  = [file, dataset, '--nodisplay', '--dpi', 300, '-c', jobj.velo_cmap]
     iargs += ['--dem', dem_file, '--alpha', jobj.velo_alpha, '--dem-nocontour' ,'--shade-exag', jobj.shade_exag]
@@ -502,74 +530,11 @@ def run_plot_velo(jobj, file, dataset, vlim=[None,None], title=None, outfile=Non
     cmd = 'view.py '+' '.join(iargs)
     print()
     print(cmd)
-
-    # Move/copy picture files to pic folder
-    if not os.path.exists(picdir):
-        os.makedirs(picdir)
-
     mintpy.view.main(iargs=iargs)
     return
 
 
-############################
-# obsolete functions
-############################
-def array2raster(array, rasterName, rasterFormat, rasterOrigin, xStep, yStep, width, length):
-    """
-    tested, don't use it:
-    gdalwarp cmd cannot generate the files, but it report no errors...
-    """
-    rasterName_tmp = rasterName+'.tmp'
-    # transform info
-    cols = array.shape[1]
-    rows = array.shape[0]
-    originX = rasterOrigin[0]
-    originY = rasterOrigin[1]
-    transform = (originX, xStep, 0, originY, 0, yStep)
-
-    # write
-    driver = gdal.GetDriverByName(rasterFormat)
-    print('initiate GDAL driver: {}'.format(driver.LongName))
-
-    print('create raster band')
-    print('raster row / column number: {}, {}'.format(rows, cols))
-    print('raster transform info: {}'.format(transform))
-    outRaster = driver.Create(rasterName_tmp, cols, rows, 1, gdal.GDT_Float64)
-    #outRaster.SetGeoTransform(transform)
-
-    print('write data to raster band')
-    outband = outRaster.GetRasterBand(1)
-    outband.WriteArray(array)
-    print('finished writing to {}'.format(rasterName_tmp))
-
-    cmd = 'gdalwarp {} {} -ts {} {} -of ISCE -to SRC_METHOD=NO_GEOTRANSFORM -to DST_METHOD=NO_GEOTRANSFORM -ot Float64 '.format(rasterName_tmp, rasterName, str(width), str(length))
-    print(cmd)
-    #os.system(cmd)
-    #print('finished writing to {}'.format(rasterName))
-    #for file in glob.glob(os.path.dirname(rasterName_tmp)+'/*tmp*'):
-    #    print('deleting {}'.format(os.path.abspath(file)))
-    #    os.remove(os.path.abspath(file))
-    #os.system('fixImageXml.py -i {} -f '.format(rasterName))
-    return
-
-def convert_geom_lalo():
-    """
-    use to call array2raster() to operate on the geometry file
-    """
-    for i, (dname, key) in enumerate(zip(['latitude','longitude'], ['lat','lon'])):
-        array, attr  = readfile.read('inputs/radar/geometryRadar.h5', datasetName=dname)
-        rasterName   = os.path.abspath('inputs/radar/{}.rdr'.format(key))
-        rasterFormat = 'ISCE'
-        rasterOrigin = [0,0]
-        xStep  = 1
-        yStep  = 1
-        width  = 3436
-        length = 11653
-        array2raster(array, rasterName, rasterFormat, rasterOrigin, xStep, yStep, width, length)
-
-
-
-
+#################################################################
 #################################################################
 
 
@@ -577,31 +542,27 @@ def main(iargs=None):
     # Read parser arguments
     inps = cmd_line_parse(iargs)
 
-    # Other parameters from the JSON file
-    with open(inps.json_file) as f:
-        jdic = json.load(f)
-        jobj = SimpleNamespace(**jdic)
-        try:
-            jobj.template = glob.glob(jobj.template)[0]
-        except:
-            try:
-                jobj.template = glob.glob('./smallbaselineApp.cfg')[0]
-            except:
-                print('Error: No MintPy template file found!')
-                sys.exit(1)
-        jobj.proc_home = os.path.abspath(jobj.proc_home)
-        jobj.proc_name = jobj.template.split('.')[0]
-    print('Current directory: {}'.format(jobj.proc_home))
-    os.chdir(jobj.proc_home)
 
-
-    ## Beginning of the workflow
+    ## Begin timing
     t_start = datetime.now()
     t_string = t_start.strftime("%Y-%m-%d %H:%M:%S")
     print('\n\n###################################################################')
     print('#### MintPy recipe | step: {} | Start'.format(inps.dosteps))
     print('#### Time: {}'.format(t_string))
     print('###################################################################\n')
+    print('Run the follow stages in sequence: {}'.format(inps.dosteps))
+
+
+    # Other parameters from the JSON file
+    with open(inps.json_file) as f:
+        jdic = json.load(f)
+        jobj = SimpleNamespace(**jdic)
+        jobj = get_template(jobj)
+        jobj.proc_home = os.path.abspath(jobj.proc_home)
+        jobj.proc_name = jobj.template.split('.')[0]
+    print('Current directory: {}'.format(jobj.proc_home))
+    os.chdir(jobj.proc_home)
+
 
     #------------------ 1. Load data and prepare stack ------------------
     if any(key in inps.dosteps for key in STEPS['load']):
@@ -615,9 +576,13 @@ def main(iargs=None):
 
         run_resamp_dem(jobj, inps)
 
+
+    #------------------ 2. Network modification / quick review ------------------
+    if any(key in inps.dosteps for key in STEPS['network']):
+
         run_smallbaselineApp(jobj.template, dostep='modify_network')
 
-        run_modify_network(jobj.template, file='inputs/ionStack.h5')
+        run_modify_network(jobj.templateIon, file='inputs/ionStack.h5')
 
         run_smallbaselineApp(jobj.template, dostep='reference_point')
 
@@ -628,8 +593,15 @@ def main(iargs=None):
         run_plot_network(jobj.template, ifgstacks=['inputs/ifgramStack.h5','inputs/ionStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
 
 
+    #------------------ supp. just plot network and loaded data ----------
+    if any(key in inps.dosteps for key in STEPS_SUPP['plot_network']):
+        run_plot_network(jobj.template, ifgstacks=['inputs/ifgramStack.h5','inputs/ionStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
 
-    #------------------ 2. Network inversion ----------------------------
+    if any(key in inps.dosteps for key in STEPS_SUPP['plot_loaded']):
+        run_plot_SBApp(script='./2_plot_SBApp.sh')  # can be improved later
+
+
+    #------------------ 3. Network inversion ----------------------------
     if any(key in inps.dosteps for key in STEPS['inversion']):
 
         run_smallbaselineApp(jobj.template, dostep='correct_unwrap_error')
@@ -641,7 +613,7 @@ def main(iargs=None):
         run_generate_mask(jobj)
 
 
-    #------------------ 3. Applying corrections -------------------------
+    #------------------ 4. Applying corrections -------------------------
     if any(key in inps.dosteps for key in STEPS['corrections']):
 
         run_smallbaselineApp(jobj.template, dostep='correct_LOD')
@@ -653,21 +625,21 @@ def main(iargs=None):
         run_diff(file1='timeseries_SET_ERA5.h5', file2='timeseriesIon.h5', outfile='timeseries_SET_ERA5_Ion.h5')
 
 
-    #------------------ 4. Estimate topographic error -------------------
+    #------------------ 5. Estimate topographic error -------------------
     if any(key in inps.dosteps for key in STEPS['topographic']):
         # choose one from below two:
         #run_smallbaselineApp(jobj.template, dostep='correct_topography')
         run_demErr(jobj, file='timeseries_SET_ERA5_Ion.h5', outfile='timeseries_SET_ERA5_Ion_demErr.h5')
 
 
-    #------------- 5. Estimate RMS from other noise sources -------------
+    #------------- 6. Estimate RMS from other noise sources -------------
     if any(key in inps.dosteps for key in STEPS['residual']):
         # choose one from below two:
         run_smallbaselineApp(jobj.template, dostep='residual_RMS')
         #run_timeseries_rms(jobj, file='timeseriesResidual.h5', deramp='no')
 
 
-    #----------------------- 6. Deramp ----------------------------------
+    #----------------------- 7. Deramp ----------------------------------
     if any(key in inps.dosteps for key in STEPS['deramp']):
         # choose one from below two; or no need to deramp
         run_smallbaselineApp(jobj.template, dostep='deramp')
@@ -675,7 +647,7 @@ def main(iargs=None):
         #run_deramp(jobj, file='timeseries_SET_ERA5_Ion_demErr.h5', outfile='timeseries_SET_ERA5_Ion_demErr_rampq.h5', kind='quadratic')
 
 
-    #----------------------- 7. Time functions --------------------------
+    #----------------------- 8. Time functions --------------------------
     if any(key in inps.dosteps for key in STEPS['ts2velo']):
         veloDir = jobj.velo_dir
         tsfiles = ['timeseries_SET_ERA5_Ion_demErr.h5', 'inputs/ERA5.h5', 'inputs/SET.h5', 'timeseriesIon.h5']
@@ -684,41 +656,36 @@ def main(iargs=None):
             run_timeseries2velocity(jobj, tsfile, f'{veloDir}/{outfile}')
 
 
-    #----------------------- 8. Plate motion correction -----------------
+    #----------------------- 9. Plate motion correction -----------------
     if any(key in inps.dosteps for key in STEPS['PMM']):
         run_bulk_plate_motion(jobj, vfile='{}/{}'.format(veloDir, 'velocity.h5'))
 
 
-
-    #----------------------- 9. Plot velocity fields ---------------------
-    if any(key in inps.dosteps for key in STEPS['plot_velo']):
-        outdir = jobj.velo_pic    # 'velocity_out/pic_velo/'
-        inf    = os.path.expanduser('{}+/velocity'.format(jobj.velo_dir))
+    #----------------------- supp. Plot velocity fields ---------------------
+    if any(key in inps.dosteps for key in STEPS_SUPP['plot_velo']):
+        outdir = jobj.velo_pic
+        inf    = os.path.expanduser('{}/velocity'.format(jobj.velo_dir))
 
         dset = 'velocity'
         outf = outdir+dset
-        run_plot_velo(jobj,  inf+'.h5',      dset,  vlim=jobj.vm_mid,  title=dset,  outfile=outf+'.png')
-        run_plot_velo(jobj,  inf+'ERA5.h5',  dset,  vlim=jobj.vm_ERA,  title=dset,  outfile=outf+'ERA5.png')
-        run_plot_velo(jobj,  inf+'SET.h5',   dset,  vlim=jobj.vm_SET,  title=dset,  outfile=outf+'SET.png')
-        run_plot_velo(jobj,  inf+'Ion.h5',   dset,  vlim=jobj.vm_mid,  title=dset,  outfile=outf+'Ion.png')
-        run_plot_velo(jobj,  inf+'_BPM.h5',  dset,  vlim=jobj.vm_mid,  title=dset,  outfile=outf+'_BPM.png')
+        for suff, vlim in zip(['','ERA5','SET','Ion','_ITRF14'], [jobj.vm_mid, jobj.vm_ERA, jobj.vm_SET, jobj.vm_mid, jobj.vm_mid]):
+            run_plot_velo(jobj, inf+suff+'.h5', dset, vlim=vlim, title=dset, outfile=outf+suff+'.png')
 
         dset = 'velocityStd'
         outf = outdir+dset
-        run_plot_velo(jobj,  inf+'.h5',      dset,  vlim=jobj.vm_STD,  title=dset,  outfile=outf+'.png')
-        run_plot_velo(jobj,  inf+'ERA5.h5',  dset,  vlim=jobj.vm_STD,  title=dset,  outfile=outf+'ERA5.png')
-        run_plot_velo(jobj,  inf+'SET.h5',   dset,  vlim=jobj.vm_STD,  title=dset,  outfile=outf+'SET.png')
-        run_plot_velo(jobj,  inf+'Ion.h5',   dset,  vlim=jobj.vm_STD,  title=dset,  outfile=outf+'Ion.png')
+        for suff in ['','ERA5','SET','Ion']:
+            run_plot_velo(jobj, inf+suff+'.h5', dset, vlim=jobj.vm_STD, title=dset,  outfile=outf+suff+'.png')
 
 
     ## End of the workflow
     t_end = datetime.now()
     t_string = t_end.strftime("%Y-%m-%d %H:%M:%S")
-    print('\n\n###################################################################')
+    print('\n###################################################################')
     print('#### MintPy recipe | step: {} | Normal finish.'.format(inps.dosteps))
     print('#### Time: {}'.format(t_string))
     print('#### Elapsed time: {}'.format(t_end-t_start))
-    print('###################################################################\n')
+    print('###################################################################\n\n')
+
 
 #################################################################
 

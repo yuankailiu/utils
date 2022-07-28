@@ -156,19 +156,20 @@ def read_template_compute(template, key):
     if key == 'ram'     : return ram
 
 
-def run_resamp_wbd(jobj):
+def run_resamp_wbd(jobj=None, geom_basedir=None, wbdFile=None, type='Body'):
     # get paths, filenames
-    iDict = readfile.read_template(jobj.template)
-    geom_basedir = os.path.dirname(os.path.abspath(iDict['mintpy.load.demFile']))
-    wbdFile      = os.path.abspath(jobj.wbd_orig)
-    wbdOutFile   = f'{geom_basedir}/waterBody.rdr'
+    if jobj:
+        iDict = readfile.read_template(jobj.template)
+        geom_basedir = os.path.dirname(os.path.abspath(iDict['mintpy.load.demFile']))
+        wbdFile      = os.path.abspath(jobj.wbd_orig)
+    wbdOutFile   = f'{geom_basedir}/water{type}.rdr'
 
     if os.path.exists(wbdOutFile):
-        print('waterBody exists: {}'.format(wbdOutFile))
-        print('skip generating waterBody')
+        print('water file exists: {}'.format(wbdOutFile))
+        print('skip generating water file')
     else:
-        print('waterBody does not exist')
-        print('Working on resmapling waterBody from: {}'.format(geom_basedir))
+        print('water file does not exist')
+        print('Working on resmapling water file from: {}'.format(geom_basedir))
         # do gdal_translate to re-generate lon.rdr.xml lat.rdr.xml
         latFile = f'{geom_basedir}/lat.rdr'
         lonFile = f'{geom_basedir}/lon.rdr'
@@ -177,9 +178,9 @@ def run_resamp_wbd(jobj):
         gdal2isce_xml(lonFile+'.vrt')
         print('Completed ISCE xml files')
 
-        # resample the waterbody
+        # resample the water file
         waterBodyRadar(latFile, lonFile, wbdFile, wbdOutFile)
-        print('Resampled waterBody: {}'.format(wbdOutFile))
+        print('Resampled water file: {}'.format(wbdOutFile))
     os.system('fixImageXml.py -i {} -f '.format(wbdOutFile))
     return
 
@@ -320,9 +321,9 @@ def run_reference_point(template, files, ref_lalo=None, ref_yx=None):
     return
 
 
-def run_plot_network(template, ifgstacks, cmap_vlist=[0.2, 0.7, 1.0]):
+def run_plot_network(template, ifgstacks, cmap_vlist=[0.2, 0.7, 1.0], arg=''):
     for file in ifgstacks:
-        iargs = [file, '-t', template, '--nodisplay', '--cmap-vlist', *cmap_vlist]
+        iargs = [file, '-t', template, '--nodisplay', '--cmap-vlist', *cmap_vlist, *arg]
         iargs = list(map(str,iargs))
         cmd   = 'plot_network.py '+' '.join(iargs)
         print()

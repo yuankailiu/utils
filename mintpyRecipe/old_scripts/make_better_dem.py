@@ -13,10 +13,11 @@
 ## The output DEM is then saved separetly (defined in `params.json` as "dem_out")
 ## The output DEM is mainly for plotting purposes using view.py
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
+
 from mintpy.utils import readfile
 
 
@@ -70,7 +71,7 @@ lat_min = float(atr['Y_FIRST']) + float(atr['Y_STEP']) * (int(atr['LENGTH'])+i)
 
 # Print info
 print('Dimension of the dataset (length, width): {}, {}'.format(atr['LENGTH'], atr['WIDTH']))
-print('S N W E: {} {} {} {}'.format(lat_min, lat_max, lon_min, lon_max))
+print(f'S N W E: {lat_min} {lat_max} {lon_min} {lon_max}')
 
 
 # Check the directory
@@ -84,7 +85,7 @@ cmd = 'gdalwarp {} {} -te {} {} {} {} -ts {} {} -of ISCE '.format(
         dem_orig, dem_out, lon_min, lat_min, lon_max, lat_max, atr['WIDTH'], atr['LENGTH'])
 os.system(cmd)
 
-cmd = 'fixImageXml.py -i {} -f '.format(dem_out)
+cmd = f'fixImageXml.py -i {dem_out} -f '
 os.system(cmd)
 
 print('Normal finish.')

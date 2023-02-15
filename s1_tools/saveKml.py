@@ -4,14 +4,16 @@
 # Copyright 2016
 #
 import argparse
+import os
+
 import isce
 import isceobj
-import os
-from osgeo import gdal
-import matplotlib as mpl;  #mpl.use('Agg')
 import matplotlib.pyplot as plt
-from pykml.factory import KML_ElementMaker as KML
 import numpy as np
+from osgeo import gdal
+from pykml.factory import KML_ElementMaker as KML
+
+import matplotlib as mpl;  #mpl.use('Agg')
 mpl.use('Agg')
 
 def createParser():
@@ -39,11 +41,13 @@ def createParser():
     parser.add_argument('-b', '--start_time', dest='startTime', type=str, default='',
             help= 'start time of the observation')
     parser.add_argument('-e', '--end_time', dest='endTime', type=str, default='',
-            help= 'end time of the observation')    
+            help= 'end time of the observation')
     parser.add_argument('-r', '--reverse_color_map', dest='reverseColorMap', type=str, default='no',
-            help= 'reverse color map (default: no)') 
-    parser.add_argument('-w', '--rewrap', dest='rewrap', type=str, default='no',
             help= 'reverse color map (default: no)')
+    parser.add_argument('-w', '--rewrap', dest='rewrap', type=str, default='no',
+            help= 'rewrap the data (default: no)')
+    parser.add_argument('--wr', '--wrap-range', dest='wrap_range', type=float, default=2*np.pi,
+            help= 'rewrap range centered at 0 (default: 2*np.pi)')
     parser.add_argument('-n', '--band_number', dest='bandNumber', type=int, default=1,
             help='band number if multiple bands exist')
     return parser
@@ -61,8 +65,8 @@ def cmdLineParse(iargs = None):
 
 def reverse_colourmap(cmap, name = 'my_cmap_r'):
     """
-    In: 
-    cmap, name 
+    In:
+    cmap, name
     Out:
     my_cmap_r
 
@@ -105,7 +109,7 @@ def get_lat_lon(file):
 
     minLon = ds.GetGeoTransform()[0]
     deltaLon = ds.GetGeoTransform()[1]
-    maxLon = minLon + width*deltaLon    
+    maxLon = minLon + width*deltaLon
 
     maxLat = ds.GetGeoTransform()[3]
     deltaLat = ds.GetGeoTransform()[5]
@@ -113,8 +117,9 @@ def get_lat_lon(file):
 
     return minLat, maxLat, minLon, maxLon
 
-def rewrap(unw):
-   rewrapped = unw - np.round(unw/(2*np.pi)) * 2*np.pi
+def rewrap(unw, wrap_range=2*np.pi):
+   # wrap centered around 0
+   rewrapped = unw - np.round(unw/wrap_range) * wrap_range
    return rewrapped
 
 def display(file,inps):
@@ -134,7 +139,7 @@ def display(file,inps):
        inps.max = np.nanmax(data)
 
     width = b.XSize
-    length = b.YSize    
+    length = b.YSize
 
     fig = plt.figure()
     fig = plt.figure(frameon=False)
@@ -148,11 +153,11 @@ def display(file,inps):
     # ax.imshow(data,aspect='normal')
     cmap = plt.get_cmap(inps.color_map)
     if inps.reverseColorMap=='yes':
-       cmap = reverse_colourmap(cmap) 
+       cmap = reverse_colourmap(cmap)
     cmap.set_bad(alpha=0.0)
  #   cmap.set_under('k', alpha=0)
-    try:     ax.imshow(data, aspect = 'normal', vmax = inps.max, vmin = inps.min, cmap = cmap)
-    except:  ax.imshow(data, aspect = 'normal', cmap = cmap)
+    try:     ax.imshow(data, aspect = 'equal', vmax = inps.max, vmin = inps.min, cmap = cmap)
+    except:  ax.imshow(data, aspect = 'equal', cmap = cmap)
 
     ax.set_xlim([0,width])
     ax.set_ylim([length,0])
@@ -166,7 +171,7 @@ def display(file,inps):
     pc = plt.figure(figsize=(1.3,2))
     axc = pc.add_subplot(111)
     cmap=mpl.cm.get_cmap(name=inps.color_map)
-    if inps.reverseColorMap=='yes':     
+    if inps.reverseColorMap=='yes':
        cmap = reverse_colourmap(cmap)
     norm = mpl.colors.Normalize(vmin=inps.min, vmax=inps.max)
     clb = mpl.colorbar.ColorbarBase(axc,cmap=cmap,norm=norm, orientation='vertical')
@@ -179,7 +184,7 @@ def display(file,inps):
     return file + '.png' , file+'_colorbar.png'
 
 def writeKML(file, img, colorbarImg,inps):
-  South, North, West, East = get_lat_lon(file)  
+  South, North, West, East = get_lat_lon(file)
   ############## Generate kml file
   print ('generating kml file')
   doc = KML.kml(KML.Folder(KML.name(os.path.basename(file))))
@@ -193,7 +198,7 @@ def writeKML(file, img, colorbarImg,inps):
   print ('adding colorscale')
   latdel = North-South
   londel = East-West
-  
+
   slc1   = KML.ScreenOverlay(KML.name('colorbar'),KML.Icon(KML.href(os.path.basename(colorbarImg))),
         KML.overlayXY(x="0.0",y="1",xunits="fraction",yunits="fraction",),
         KML.screenXY(x="0.0",y="1",xunits="fraction",yunits="fraction",),
@@ -204,7 +209,7 @@ def writeKML(file, img, colorbarImg,inps):
 
   doc.Folder.append(slc1)
 
-  
+
 
   #############################
   from lxml import etree
@@ -227,7 +232,7 @@ def runKml(inps):
 
     for file in inps.prodlist:
        file = os.path.abspath(file)
-       img,colorbar = display(file,inps) 
+       img,colorbar = display(file,inps)
        writeKML(file,img,colorbar,inps)
 
 def main(iargs=None):
@@ -240,5 +245,3 @@ def main(iargs=None):
 
 if __name__ == '__main__':
     main()
-
-

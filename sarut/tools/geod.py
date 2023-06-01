@@ -9,52 +9,50 @@
 #   import sarut.tools.geod as sargeo
 
 
-import os
-import sys
-import glob
-import h5py
-import string
-import warnings
 import argparse
-import numpy      as np
+import glob
+import os
+import string
+import sys
+import warnings
+from datetime import datetime
+
+import h5py
 import matplotlib as mpl
-from   scipy      import linalg
-from   matplotlib import colors
-from   datetime   import datetime
-import matplotlib.pyplot   as plt
 import matplotlib.gridspec as gridspec
-from   mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from sklearn.linear_model import LinearRegression
-
-
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import colors
 from mintpy import (
-    view,
-    tsview,
+    plot_coherence_matrix,
     plot_network,
     plot_transection,
-    plot_coherence_matrix,
     solid_earth_tides,
+    tsview,
+    view,
 )
-from mintpy.view import viewer
-
-from mintpy.objects import timeseries
-from mintpy.objects import coord
+from mintpy.objects import coord, timeseries
 from mintpy.objects.coord import coordinate
 from mintpy.tsview import timeseriesViewer
 from mintpy.utils import (
+    attribute as attr,
+    plot as pp,
     ptime,
     readfile,
-    writefile,
     utils as ut,
-    plot as pp,
-    attribute as attr,
+    writefile,
 )
+from mintpy.view import viewer
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy import linalg
+from sklearn.linear_model import LinearRegression
 
 # Inscrese matplotlib font size when plotting
 plt.rcParams.update({'font.size': 16})
 
 
 #########################################################
+
 
 def lalo2yx(lalo):
     la = float(lalo[0])
@@ -63,12 +61,14 @@ def lalo2yx(lalo):
     x = coord.lalo2yx(lo, coord_type='lon')
     return [y, x]
 
+
 def yx2lalo(yx):
     y = int(yx[0])
     x = int(yx[1])
     lat = coord.yx2lalo(y, coord_type='az')
     lon = coord.yx2lalo(x, coord_type='rg')
     return [lat, lon]
+
 
 def line_azimuth(yx_start, yx_end, yflip=True):
     # get the azimuth clockwise wrt north (positive y-axis)
@@ -79,6 +79,7 @@ def line_azimuth(yx_start, yx_end, yflip=True):
     elif yflip is True:
         azimuth = np.rad2deg(np.arctan2(dx, -dy)) % 360
     return azimuth
+
 
 def pt_projline(lalo, start_lalo, end_lalo):
     la = lalo[0]                    # lalo = array(N, 2)
@@ -97,6 +98,7 @@ def pt_projline(lalo, start_lalo, end_lalo):
     dper = np.linalg.norm(new_lalo-lalo, axis=1) # distance perpendicular to line
     return new_lalo, dpar, dper
 
+
 def pts_projline(lalo, start_lalo, end_lalo):
     la = lalo[:,0]                    # lalo = array(N, 2)
     lo = lalo[:,1]                    # lalo = array(N, 2)
@@ -114,6 +116,7 @@ def pts_projline(lalo, start_lalo, end_lalo):
     dper = np.linalg.norm(new_lalo-lalo, axis=1) # distance perpendicular to line
     return new_lalo, dpar, dper
 
+
 def parallel_line(start_yx, end_yx, angle, space, yflip=True):
     # parallel line with space clockwise wrt to north (positive y-axis)
     dx = space * np.sin(np.deg2rad(angle))
@@ -128,6 +131,7 @@ def parallel_line(start_yx, end_yx, angle, space, yflip=True):
     end_yx2[1]   = end_yx[1]   + dx
     return list(start_yx2), list(end_yx2)
 
+
 def make_transec_swath(start_yx1, end_yx1, start_yx2, end_yx2, n, outfile='prof_tmp.txt'):
     start_xs = np.linspace(start_yx1[1], start_yx2[1], n)
     start_ys = np.linspace(start_yx1[0], start_yx2[0], n)
@@ -136,19 +140,20 @@ def make_transec_swath(start_yx1, end_yx1, start_yx2, end_yx2, n, outfile='prof_
     res = []
     f = open(outfile, '+w')
     for i in range(n):
-        strng  = '{:.4f}\t{:.4f}\t{:.4f}\t{:.4f}\n'.format(start_ys[i], start_xs[i], end_ys[i], end_xs[i])
+        strng  = f'{start_ys[i]:.4f}\t{start_xs[i]:.4f}\t{end_ys[i]:.4f}\t{end_xs[i]:.4f}\n'
         f.write(strng)
         res.append([start_ys[i], start_xs[i], end_ys[i], end_xs[i]])
     f.close()
     f = open('{}_pts.txt'.format(outfile.split('.')[0]), '+w')
     for i in range(n):
-        strng  = '{:.4f}\t{:.4f}\n'.format(start_ys[i], start_xs[i])
+        strng  = f'{start_ys[i]:.4f}\t{start_xs[i]:.4f}\n'
         f.write(strng)
-        strng  = '{:.4f}\t{:.4f}\n'.format( end_ys[i], end_xs[i]  )
+        strng  = f'{end_ys[i]:.4f}\t{end_xs[i]:.4f}\n'
         f.write(strng)
     f.close()
-    print('profiles coord saved into {}'.format(outfile))
+    print(f'profiles coord saved into {outfile}')
     return res
+
 
 def transec_pick(file, dset, transec_txt, fmt='yx', mask_file='maskTempCoh.h5'): # return default unit, usaully meter
     # read transect file in (starty, startx, endy, endx) order
@@ -183,3 +188,64 @@ def transec_pick(file, dset, transec_txt, fmt='yx', mask_file='maskTempCoh.h5'):
         X = X + list(x)
         Z = Z + list(z)
     return X, Z, res
+
+
+def calc_rake(strike, azimuth, dip):
+    strike  = np.deg2rad(strike)
+    azimuth = np.deg2rad(azimuth)
+    dip     = np.deg2rad(dip)
+
+    rotation = np.arctan2(np.tan(strike) - np.tan(azimuth),
+                        np.cos(dip)*(1.+np.tan(azimuth)*np.tan(strike)))
+
+    # If strike within [90, 270], change rotation
+    if azimuth*(180./np.pi)>90. and azimuth*(180./np.pi)<=270.:
+        rotation += np.pi
+    if strike*(180/np.pi)>90. and strike*(180./np.pi)<=270:
+        rotation -= np.pi
+
+    return np.rad2deg(rotation)
+
+
+def calc_inoutplane(strike, azimuth, dip):
+    strike  = np.deg2rad(strike)
+    azimuth = np.deg2rad(azimuth)
+    dip     = np.deg2rad(dip)
+
+    phi = np.arcsin(np.sin(strike)*np.cos(azimuth) - np.cos(strike)*np.sin(azimuth))
+
+    fac_in  = (np.cos(dip)) / np.sqrt(np.cos(dip)**2 + np.sin(phi)**2 * np.sin(dip)**2)
+    fac_out = (np.sin(dip)*np.sin(phi)) / np.sqrt(np.cos(dip)**2 + np.sin(phi)**2 * np.sin(dip)**2)
+
+    return fac_in, fac_out
+
+
+###
+# https://www.geeksforgeeks.org/vector-projection-using-python/
+# https://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
+###
+
+def unit_vector_azimuth(azimuth):
+    x = np.sin(azimuth)
+    y = np.cos(azimuth)
+    if type(azimuth) in [float, int, np.float64]:
+        z = 0
+    else:
+        z = np.zeros_like(x)
+    return x, y, z
+
+
+def ortho_vector_plane(strike, dip):
+    x = np.cos(strike) * np.sin(dip)
+    y = -np.sin(strike) * np.sin(dip)
+    z = np.cos(dip)
+    return x, y, z
+
+
+def angle_vectors(u, v):
+    if type(u) in [float, int, np.float64]:
+        dot = np.sum(u*v)/(np.linalg.norm(u)*np.linalg.norm(v))
+    else:
+        dot = np.sum(u*v, axis=0)/(np.linalg.norm(u, axis=0)*np.linalg.norm(v, axis=0))
+    rake = np.arccos(np.clip(dot, a_min=-1.0, a_max=1.0))
+    return rake

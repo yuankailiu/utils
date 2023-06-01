@@ -50,4 +50,37 @@ Yunjun's and Lijun's guide (using cmake) have been tested and they works. If it 
 ```
 
 
-## 2.
+## 2. Copy this folder to your track folder
+```
+# Copy teh scripts to the process folder
+cp -r run_topsApp ./process
+
+# make dir for SLCs
+mkdir data & cd data
+
+# download SLCs here
+
+```
+
+
+## 3. Modify the scripts/example templates
+```
+vi run_job_series.sh
+
+vi example/reference.xml
+
+vi example/topsApp.xml
+
+vi example/topsApp_geocode.xml
+
+vi example/topsAppDenseoffsets_geocode.xml
+
+## Create pair folders
+s1_pair.py -d ../data -x example/reference.xml
+```
+
+
+## 4. run the script
+```
+time bash run_job_series.sh
+```

@@ -1,0 +1,25 @@
+## MintPy related
+mintpy.template          = AqabaSen*.cfg  # used to run mintpy and copy saved as smallbaselineApp.cfg
+mintpy.tempCohThreshold  = 0.9            # create a mask from temporal coherence
+mintpy.itrfPlate         = Arabia         # plate name in ITRF14 plate motion model
+
+## File paths and locations
+path.wbdOrig             = /marmot-nobak/ykliu/aqaba/dem/wbd_1_arcsec/swbdLat_N25_N35_Lon_E030_E042.wbd       # input water body
+path.demOrig             = /marmot-nobak/ykliu/aqaba/dem/dem_1_arcsec/demLat_N25_N35_Lon_E030_E042.dem.wgs84  # input DEM
+path.velocityDir         = velocity_out/              # velocity output folder
+path.velocityPic         = velocity_out/velo_pic/     # velocity output plots folder
+path.customMask          = none                       # Given any custom mask
+
+## Some plotting parameters
+plot.tempCohCmap         = romanian_r  # colormap for temporal coherence in the network plot
+plot.velocityCmap        = RdYlBu_r    # colormap for the velocity plot
+plot.velocityAlpha       = 0.8         # transparency of velocity plot
+plot.shadeExag           = 0.02        # DEM shaded relief exageration
+plot.velocityMsk         = coh         # ways to mask velocity plot
+plot.vm_big              = -8,8        # vlim for large range
+plot.vm_mid              = -5,5        # vlim for middle range
+plot.vm_sma              = -2,2        # vlim for small range
+plot.vm_STD              = 0,1.0       # vlim for Std data
+plot.vm_AMP              = 0,16        # vlim for seasonal amplitude
+plot.vm_SET              = -0.2,0.2    # vlim for solid earth tides
+plot.vm_ERA              = -2,2        # vlim for WEATHER model

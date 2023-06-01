@@ -1,0 +1,42 @@
+# template:
+##------------------------------- ISCE tops/stripmapStack ------------------------------##
+isce.processor          = topsStack                  #[stripmapStack, topsStack], auto for topsStack
+isce.workflow           = interferogram              #[slc / correlation / interferogram / offset], auto for interferogram
+isce.demSNWE            = auto                       #[S, N, W, E] in degree, auto for none
+isce.demFile            = /central/groups/simonsgroup/ykliu/aqaba/dem/dem_1_arcsec/demLat_N25_N35_Lon_E030_E042.dem.wgs84
+isce.demSource          = srtm1                      #[srtm1, srtm3, nasadem, gsi_dehm], auto for srtm1
+isce.demFillValue       = 0                          #[0 / 1 / -32768], value used to fill missing DEMs, auto for -32768
+isce.boundingBox        = 27.0, 33.1, 33, 38         #[S, N, W, E] in degree, auto for none
+isce.referenceDate      = 20230403                   #[20150101 / no], auto for none (1st date)
+isce.azimuthLooks       = 5                          #[int], auto for 3
+isce.rangeLooks         = 20                         #[int], auto for 9
+isce.filtStrength       = 0.5                        #[0.0-1.0], auto for 0.5
+isce.unwrapMethod       = snaphu                     #[snaphu / icu], auto for snaphu
+isce.useGPU             = yes                        #[yes / no], auto for no
+isce.numProcess         = 1                          #[int>=1], number of processors, auto for 4
+
+##----------for topsStack only:
+isce.virtualMerge       = no                         #[yes / no], auto for no, use virtual files for the merged SLCs and geometry
+isce.coregistration     = NESD                       #[geometry / NESD], auto for geometry
+isce.swathNum           = auto                       #[1,2,3], auto for '1,2,3'
+isce.numConnection      = 3                          #[int>=1], auto for 3
+isce.orbitDir           = /central/groups/simonsgroup/ykliu/z_common_data/aux_poeorb   #Directory with all orbit files
+isce.auxDir             = /central/groups/simonsgroup/ykliu/z_common_data/aux_cal      #Directory with all aux   files
+isce.startDate          = none                       #[20140825 / no], auto for none (1st date)
+isce.endDate            = none                       #[20190622 / no], auto for none (last date)
+isce.numProcess4topo    = 12                         #auto for numProcess/OMP_NUM_THREADS. Max limited by no. of CPUs per node on server
+## ionospheric phase estimation
+## copy $ISCE_STACK/topsStack/ion_param.txt to the local dir to turn ON iono
+isce.numConnectionIon   = 3                          #[int>=1], auto for 3
+isce.paramIonFile       = ./inputs/ion_param.txt     #Ion param file, auto for none (no iono estimation)
+
+##----------for stripmapStack only:
+## Sensors with zero doppler SLC: ALOS2
+## link: https://github.com/isce-framework/isce2/blob/master/components/isceobj/StripmapProc/Factories.py#L61
+isce.zeroDopper         = no                         #[yes / no], use zero doppler geometry for processing, auto for no
+isce.focus              = no                         #[yes / no], do focus, auto for yes (for RAW data)
+isce.ALOS.fbd2fbs       = yes                        #[yes / no], auto for yes, convert FBD to FBS for ALOS-1
+isce.ALOS2.polarization = HH                         #[HH / VV], auto for HH
+isce.maxTempBaseline    = 1800                       # auto for 1800 days
+isce.maxPerpBaseline    = 1800                       # auto for 1800 meters
+isce.applyWaterMask     = yes                        # auto for yes

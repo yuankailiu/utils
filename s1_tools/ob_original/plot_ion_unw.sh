@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Plot ionosphere and unw tiles for a quick survey 
-# TODO modify so we can run from the 'process' dir more easily 
-# Maybe add to the default processing chain so we finish with this product 
+# Plot ionosphere and unw tiles for a quick survey
+# TODO modify so we can run from the 'process' dir more easily
+# Maybe add to the default processing chain so we finish with this product
 
 cwd=$(pwd)
 insar_dir='/marmot-nobak/olstephe/InSAR/Makran'
@@ -11,7 +11,7 @@ track_dir=$insar_dir/$track/process
 cd $track_dir
 
 
-# Plot unw 
+# Plot unw
 mkdir ${track}_full_unw_test
 cd ${track}_full_unw_test
 plot_unw.py -dir .. -svg ${track}_full_unw.svg

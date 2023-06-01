@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
 
-import os
-import sys
+import argparse
 import glob
 import ntpath
-import argparse
+import os
+import sys
 
 
 def runCmd(cmd, silent=0):
     import os
 
     if silent == 0:
-        print("{}".format(cmd))
+        print(f"{cmd}")
     status = os.system(cmd)
     if status != 0:
-        raise Exception('error when running:\n{}\n'.format(cmd))
+        raise Exception(f'error when running:\n{cmd}\n')
 
 
 def getWidth(xmlfile):
     from xml.etree.ElementTree import ElementTree
     xmlfp = None
     try:
-        xmlfp = open(xmlfile,'r')
-        print('reading file width from: {0}'.format(xmlfile))
+        xmlfp = open(xmlfile)
+        print(f'reading file width from: {xmlfile}')
         xmlx = ElementTree(file=xmlfp).getroot()
         #width = int(xmlx.find("component[@name='coordinate1']/property[@name='size']/value").text)
         tmp = xmlx.find("component[@name='coordinate1']/property[@name='size']/value")
         if tmp == None:
             tmp = xmlx.find("component[@name='Coordinate1']/property[@name='size']/value")
         width = int(tmp.text)
-        print("file width: {0}".format(width))
-    except (IOError, OSError) as strerr:
+        print(f"file width: {width}")
+    except OSError as strerr:
         print("IOError: %s" % strerr)
         return []
     finally:
@@ -49,8 +49,6 @@ def cmdLineParse():
             help = 'data directory')
     parser.add_argument('-svg', dest='svg', type=str, required=True,
             help = 'output svg filename')
-    parser.add_argument('-amp', dest='overamp', action='store_true', default=False,
-            help = 'turn on overlaying the amplitude. (default: %(default)s)')
 
     if len(sys.argv) <= 1:
         print('')
@@ -78,37 +76,23 @@ if __name__ == '__main__':
     #images per line
     ipl = 20
     imgdir = 'img'
-    if inps.overamp:
-        imgdir += '_amp'
-
-    if not os.path.exists(imgdir):
-    	os.mkdir(imgdir)
-
-    files = sorted(glob.glob( os.path.join(inps.dir, '*_*', 'filt_fine.unw') )) # (pair is -3)
+    os.mkdir(imgdir)
+    files = sorted(glob.glob( os.path.join(inps.dir, '*-*', 'ion/lower/merged/filt_topophase.unw') )) # (pair is -5)
+    # files = sorted(glob.glob( os.path.join(inps.dir, '*-*', 'merged/filt_topophase.unw.geo') )) # (pair is -3)
     nfiles = len(files)
     for i in range(nfiles):
-        print(files[i])
-        pair = files[i].split('/')[-2] # Adjust based on file path
-        mdate = pair.split('_')[0]
-        sdate = pair.split('_')[1]
+        pair = files[i].split('/')[-5] # Adjust based on file path
+        mdate = pair.split('-')[0]
+        sdate = pair.split('-')[1]
         width = getWidth(files[i] + '.xml')
 
-        if not inps.overamp:
-            cmd = 'mdx {} -s {} -ch2 -r4 -rhdr {} -wrap 20 -addr -10 -cmap CMY -P -workdir {}'.format(
-                files[i],
-                width,
-                width*4,
-                imgdir)
-        elif inps.overamp:
-            cmd = 'mdx {} -s {} -amp -r4 -rtlr {} -CW -unw -r4 -rhdr {} -wrap 20 -addr -10 -cmap CMY -P -workdir {}'.format(
-                files[i],
-                width,
-                width*4,
-                width*4,
-                imgdir)
-
+        cmd = 'mdx {} -s {} -ch2 -r4 -rhdr {} -wrap 20 -addr -10 -cmap CMY -P -workdir {}'.format(
+            files[i],
+            width,
+            width*4,
+            imgdir)
         runCmd(cmd)
-        # Can change the compression here if we want
+        # Originally 12%
         cmd = 'convert {} -resize 12% {}'.format(
             os.path.join(imgdir, 'out.ppm'),
             os.path.join(imgdir, pair + '.tiff'))
@@ -144,4 +128,3 @@ if __name__ == '__main__':
 
     with open(inps.svg, 'w') as f:
         f.write(svg)
-

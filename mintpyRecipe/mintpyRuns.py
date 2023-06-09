@@ -79,6 +79,13 @@ class SBApp:
         # read and check the parameter file
         self.pDict = check_parameter_txt(self.param_file)
 
+
+    def create_run_file(self, file):
+        self.f = open(file, 'w')
+        self.f.write('#!/bin/bash\n\n')
+        return
+
+
     def get_template(self):
         """ Define the template and save a copy
         """
@@ -152,14 +159,14 @@ class SBApp:
         self.f.write(cmd+'\n\n')
 
 
-    def write_loaddata(self, project=None, only_geom=False):
+    def write_loaddata(self, project=None, datasets='-l ifg geom ion'):
         """ Write command line: `load_data.py`
         """
         cmd = f'load_data.py -t smallbaselineApp.cfg '
         if project:
             cmd += f'--project {project} '
-        if only_geom:
-            cmd += '--geom '
+        if datasets:
+            cmd += datasets
         self.f.write(cmd+'\n\n')
 
 
@@ -178,7 +185,7 @@ class SBApp:
             files.append(os.path.join(self.indir, f))
 
         # command line
-        cmd = f"geocode.py {' '.join(map(str,files))} -l {geom_rdr} --lalo {' '.join(map(str,lalo))} --ram {self.ram} --update\n"
+        cmd = f"geocode.py {' '.join(map(str,files))} -l {geom_rdr} --lalo {' '.join(map(str,lalo))} --ram {self.ram} --update\n\n"
 
         # backup the radar coord files
         cmd += f'mkdir -p {rdr_dir}\n'
@@ -282,6 +289,19 @@ class SBApp:
     def write_demErr(self, file, outfile):
         cmd  = f'dem_error.py {file} {self.time_func} -g {self.geom_file} -o {outfile} '
         cmd += f'--cluster {self.cluster} --num-worker {self.numWorker} --ram {self.ram} --update\n\n'
+        self.f.write(cmd)
+
+
+    def write_closure_phase(self, ifile, nl, bw, action, nsig=3, neps=None, waterMask='waterMask.h5', outdir='closurePhase', ram=4, workers=4):
+        if nl < bw:
+            sys.exit('--conn-level (assumed no bias) should be at least the --bandwidth of time-series analysis')
+
+        cmd = f'closure_phase_bias.py -i {ifile} --nl {nl} --bw {bw} -a {action} --wm {waterMask} -o {outdir} '
+        if nsig:
+            cmd += f'--num-sigma {nsig} '
+        if neps:
+            cmd += f'--eps {neps} '
+        cmd += f'--ram {ram} --num-worker {workers} \n\n'
         self.f.write(cmd)
 
 
@@ -460,10 +480,9 @@ def main(proc, inps):
 
 
     ########## Load data and geocode stack DEM ##############
-    proc.f = open('run_0_prep', 'w')
+    proc.create_run_file('run_0_prep')
 
     proc.write_smallbaselineApp(dostep='load_data')
-    proc.write_loaddata(only_geom=True)
     proc.write_radar2geo_inputs()
     proc.f.write(f'{os.path.basename(__file__)} -p {proc.param_file} -a dem_resamp\n')
 
@@ -471,12 +490,10 @@ def main(proc, inps):
 
 
     ########## Network modifications and plots ##############
-    proc.f = open('run_1_network', 'w')
+    proc.create_run_file('run_1_network')
 
     proc.write_smallbaselineApp(dostep='modify_network')
-    #proc.write_modify_network(file='ionStack.h5')
     proc.write_smallbaselineApp(dostep='reference_point')
-    #proc.write_reference_point(files=['inputs/ionStack.h5'])
     proc.write_smallbaselineApp(dostep='quick_overview')
     proc.write_plot_network(stacks=['ifgramStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
     proc.f.write('smallbaselineApp.py --plot \n\n')
@@ -485,18 +502,17 @@ def main(proc, inps):
 
 
     ################### Network inversion ##################
-    proc.f = open('run_2_inversion', 'w')
+    proc.create_run_file('run_2_inversion')
 
     proc.write_smallbaselineApp(dostep='correct_unwrap_error')
     proc.write_smallbaselineApp(dostep='invert_network')
-    #proc.write_ifgram_inversion('ionStack.h5', mask='waterMask.h5', weight='no')
     proc.write_generate_mask()
 
     proc.f.close()
 
 
     ################ Apply corrections ####################
-    proc.f = open('run_3_corrections', 'w')
+    proc.create_run_file('run_3_corrections')
 
     proc.write_smallbaselineApp(dostep='correct_LOD')
     proc.write_smallbaselineApp(dostep='correct_SET')
@@ -513,12 +529,14 @@ def main(proc, inps):
 
 
     ################ Velocity estimation ###################
+    proc.create_run_file('run_4_velocity')
 
     ts2veloDict = { 'velocity'              : ['timeseries'                     , proc.pDict['plot.vm_mid']],
                     'velocity2'             : ['timeseries_SET'                 , proc.pDict['plot.vm_mid']],
                     'velocity3'             : ['timeseries_SET_ERA5'            , proc.pDict['plot.vm_mid']],
                     'velocity4'             : ['timeseries_SET_ERA5_Ion'        , proc.pDict['plot.vm_mid']],
                     'velocity5'             : ['timeseries_SET_ERA5_Ion_demErr' , proc.pDict['plot.vm_mid']],
+                    'velocity5_ITRF14'      : ['none'                           , proc.pDict['plot.vm_mid']],
                     'velocitySET'           : ['inputs/SET'                     , proc.pDict['plot.vm_SET']],
                     'velocityERA5'          : ['inputs/ERA5'                    , proc.pDict['plot.vm_ERA']],
                     'velocityIon'           : ['inputs/ion'                     , proc.pDict['plot.vm_mid']],
@@ -526,13 +544,11 @@ def main(proc, inps):
                     'velocityIonTotal'      : ['inputs/ionTotal'                , proc.pDict['plot.vm_mid']],
                     }
 
-    proc.f = open('run_4_velocity', 'w')
-
-    cmd = proc.pDict['mintpy.ts2velo']
     for key, item in ts2veloDict.items():
+        if not item[0]: continue
         vfile = key + '.h5'
         tfile = item[0] + '.h5'
-        proc.write_ts2velo(tfile, vfile, ts2velocmd=cmd, update=False)
+        proc.write_ts2velo(tfile, vfile, ts2velocmd=proc.pDict['mintpy.ts2velo'], update=False)
 
     proc.write_plate_motion(vfile=os.path.join(proc.pDict['path.velocityDir'], 'velocity5.h5'))
 
@@ -540,14 +556,17 @@ def main(proc, inps):
 
 
     ################## Plot Velocity #######################
-    proc.f = open('run_5_velocityPlot', 'w')
+    proc.create_run_file('run_5_velocityPlot')
 
     outdir = proc.pDict['path.extraPicDir']
     veldir = proc.pDict['path.velocityDir']
     proc.f.write(f'mkdir -p {outdir}\n\n')
 
     dset = 'velocity'
-    vfiles = sorted(glob.glob(os.path.join(veldir+'/*.h5')))
+    vfiles = [os.path.join(veldir,x+'.h5') for x in ts2veloDict.keys()]
+    vfiles += glob.glob(os.path.join(veldir,'*.h5'))
+    vfiles = sorted(list(set(vfiles)))
+
     for vfile in vfiles:
         key = os.path.basename(vfile).split('.h5')[0]
         ofile = os.path.join(outdir, key + '.png')
@@ -572,6 +591,109 @@ def main(proc, inps):
 
     proc.f.write('smallbaselineApp.py --plot \n\n')
     proc.f.close()
+
+
+    ################## Closure phase bias #######################
+    proc.create_run_file('run_6_closurePhase')
+
+    outdir = './closurePhase'
+    bw = 3
+    nl = 10
+    nsig = 3
+    ram  = 24
+    workers = 8
+    threshold = proc.pDict.get('mintpy.tempCohThreshold', 0.90)
+    msk1 = 'maskTempCohClosurePhase.h5'
+    msk2 = 'mask_numTriNonzeroIntAmbiguity.h5'
+    msk3 = 'maskTempCohClosurePhaseNumTriNonzero.h5'
+    proc.ifg_stack_msk = os.path.join(proc.indir,'ifgramStack_msk.h5')
+    bw_dir = outdir+f'/bw{bw}'
+
+    # calculate
+    proc.f.write('## Do closure phase bias calculation\n\n')
+    proc.f.write(f'mask.py {proc.ifg_stack} -m {proc.water_mask} --fill 0 -o {proc.ifg_stack_msk}\n\n')
+    proc.f.write(f'modify_network.py {proc.ifg_stack_msk} --reset\n\n')
+    proc.write_closure_phase(proc.ifg_stack_msk, nl=nl, bw=bw, action='mask',           nsig=nsig, ram=ram, workers=workers, outdir=outdir)
+    proc.write_closure_phase(proc.ifg_stack_msk, nl=nl, bw=bw, action='quick_estimate', nsig=nsig, ram=ram, workers=workers, outdir=outdir)
+    proc.f.write(f'modify_network.py {proc.ifg_stack_msk} --max-conn-num {bw}\n\n')
+    proc.write_closure_phase(proc.ifg_stack_msk, nl=nl, bw=bw, action='estimate',       nsig=nsig, ram=ram, workers=workers, outdir=outdir)
+
+    # create customed masks
+    proc.f.write('## Apply masking based on closure phase bias\n\n')
+    proc.f.write(f'mask.py {outdir}/maskClosurePhase.h5 -m maskTempCoh_+{threshold}.h5 --fill 0 -o {outdir}/{msk1}\n\n')
+    proc.f.write(f'mask.py {outdir}/{msk1} -m maskPoly.h5 --fill 0 -o {outdir}/{msk1}\n\n')
+    proc.f.write(f'generate_mask.py numTriNonzeroIntAmbiguity.h5 -M 0 -o {msk2}\n\n')
+    proc.f.write(f'mask.py {outdir}/{msk1} -m {msk2} --fill 0 -o {outdir}/{msk3}\n\n')
+
+    # inversion on short-bw analysis, apply corrections
+    proc.f.write('## Short-bw analysis and corrections\n\n')
+    proc.f.write(f'mkdir -p {bw_dir} && cd {bw_dir}\n\n')
+    proc.f.write(f'ifgram_inversion.py {proc.ifg_stack_msk} -t {proc.indir}/smallbaselineApp.cfg --update\n\n')
+    proc.f.write(f'diff.py timeseries.h5 {proc.indir}/SET.h5 --force\n\n')
+    proc.f.write(f'diff.py timeseries_SET.h5 {proc.indir}/ERA5.h5 --force\n\n')
+    proc.f.write(f'diff.py timeseries_SET_ERA5.h5 {proc.indir}/IonTotal.h5 -o timeseries_SET_ERA5_Ion.h5 --force\n\n')
+    proc.write_demErr('timeseries_SET_ERA5_Ion.h5', 'timeseries_SET_ERA5_Ion_demErr.h5')
+    proc.f.write(f'rm -rf timeseries_SET.h5 timeseries_SET_ERA5.h5 timeseries_SET_ERA5_Ion.h5 \n\n')
+
+    # apply closure phase bias correction
+    proc.f.write(f'diff.py timeseries_SET_ERA5_Ion_demErr.h5 {outdir}/timeseriesBiasApprox.h5 -o timeseries_cor_approx.h5 --force\n\n')
+    proc.f.write(f'diff.py timeseries_SET_ERA5_Ion_demErr.h5 {outdir}/timeseriesBias.h5 -o timeseries_cor.h5 --force\n\n')
+
+    # calculate corrected velocity of short-bw analysis
+    proc.write_ts2velo('timeseries_cor_approx.h5', 'velocity_cor_approx.h5', ts2velocmd=proc.pDict['mintpy.ts2velo'], update=False)
+    proc.write_ts2velo('timeseries_cor.h5', 'velocity_cor.h5', ts2velocmd=proc.pDict['mintpy.ts2velo'], update=False)
+
+    # apply ITRF reference frame
+    proc.write_plate_motion(vfile='velocity_cor_approx.h5')
+    proc.write_plate_motion(vfile='velocity_cor.h5')
+
+    # plot the velocity
+    proc.write_plot_velo('velocity_cor_approx.h5', 'velocity', proc.pDict['plot.vm_mid'], update=False)
+    proc.write_plot_velo('velocity_cor.h5', 'velocity', proc.pDict['plot.vm_mid'], update=False)
+
+    # reset the ifgram network to all pairs, finish
+    proc.f.write(f'cd {proc.cwd}\n\n')
+    proc.f.write(f'modify_network.py {proc.ifg_stack_msk} --reset\n\n')
+    proc.f.write("echo 'Normal finish the closure phase bias analysis'\n")
+    proc.f.close()
+
+
+    ################## ICAMS #######################
+    proc.create_run_file('run_7_icams')
+
+    proj = 'los'
+    ref_ts_file = 'timeseries_SET.h5'
+    nproc = 8
+    ts_icams = f'timeseries_icams_{proj}_sklm'
+    ts_icams_cor = f'timeseries_icamsCor_{proj}_sklm'
+    proc.f.write('## Remember to `conda activate icams` before running\n\n')
+    proc.f.write(f'rm -rf *_orbit *_orbit0 ./icams/ERA5/*.npy ./icams/ERA5/sar\n\n')
+    proc.f.write(f"cp {proc.iDict['mintpy.load.metaFile']} {proc.indir}\n\n")
+    proc.f.write(f'tropo_icams.py {ref_ts_file} {proc.geom_file} --sar-par {proc.indir}/IW1.xml --ref-file {ref_ts_file} --project {proj} --nproc {nproc}\n\n')
+    proc.f.write(f'mv {ts_icams} {ts_icams_cor} ./icams\n\n')
+
+    ## prepare ERA5_stochastic + ion corrected time series
+    proc.f.write('cd ./icams')
+    proc.f.write(f'mv {ts_icams_cor} timeseries_SET_ERA5S.h5\n\n')
+    proc.f.write(f"image_math.py {ts_icams} '*' -1.0  --overwrite\n\n")
+
+    proc.f.write(f'diff.py timeseries_SET_ERA5S.h5 {proc.indir}/IonTotal.h5 -o timeseries_SET_ERA5S_Ion.h5 --force\n\n')
+    proc.write_demErr('timeseries_SET_ERA5S_Ion.h5', 'timeseries_SET_ERA5S_Ion_demErr.h5')
+    proc.f.write(f'timeseries_rms.py  timeseriesResidual.h5  --template ../smallbaselineApp.cfg')
+    proc.f.write(f'rm -rf timeseries_SET_ERA5S.h5 timeseries_SET_ERA5S_Ion.h5 \n\n')
+
+    proc.write_ts2velo('timeseries_SET_ERA5S_Ion_demErr.h5', 'velocity5_icams.h5', ts2velocmd=proc.pDict['mintpy.ts2velo'], update=False)
+    proc.write_plate_motion(vfile='velocity5_icams.h5')
+    proc.f.write(f'diff.py velocity5_icams_ITRF14.h5 ../{veldir}/velocity5_ITRF14.h5 -o velocity_icamsDiff.h5\n\n')
+
+    proc.write_plot_velo('velocity5_icams_ITRF14.h5', 'velocity', proc.pDict['plot.vm_mid'], update=False)
+    proc.write_plot_velo('velocity_icamsDiff.h5', 'velocity', proc.pDict['plot.vm_mid'], update=False)
+
+    proc.f.write(f'cd {proc.cwd}\n\n')
+    proc.f.write("echo 'Normal finish the ICAMS analysis'\n")
+
+    proc.f.close()
+
 
 
 #############################################################################################################

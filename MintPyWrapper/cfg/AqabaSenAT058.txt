@@ -3,11 +3,11 @@
 isce.processor          = topsStack                  #[stripmapStack, topsStack], auto for topsStack
 isce.workflow           = interferogram              #[slc / correlation / interferogram / offset], auto for interferogram
 isce.demSNWE            = auto                       #[S, N, W, E] in degree, auto for none
-isce.demFile            = /central/groups/simonsgroup/ykliu/aqaba/dem/dem_1_arcsec/demLat_N25_N35_Lon_E030_E042.dem.wgs84
+isce.demFile            = /central/groups/simonsgroup/ykliu/aqaba/dem/dem_1_arcsec/demLat_N25_N35_Lon_E029_E042.dem.wgs84
 isce.demSource          = srtm1                      #[srtm1, srtm3, nasadem, gsi_dehm], auto for srtm1
 isce.demFillValue       = 0                          #[0 / 1 / -32768], value used to fill missing DEMs, auto for -32768
-isce.boundingBox        = 27.0, 33.1, 33, 38         #[S, N, W, E] in degree, auto for none
-isce.referenceDate      = 20230403                   #[20150101 / no], auto for none (1st date)
+isce.boundingBox        = 25.8, 31.8, 29, 35         #[S, N, W, E] in degree, auto for none
+isce.referenceDate      = 20230624                   #[20150101 / no], auto for none (1st date)
 isce.azimuthLooks       = 5                          #[int], auto for 3
 isce.rangeLooks         = 20                         #[int], auto for 9
 isce.filtStrength       = 0.5                        #[0.0-1.0], auto for 0.5
@@ -19,7 +19,7 @@ isce.numProcess         = 1                          #[int>=1], number of proces
 isce.virtualMerge       = no                         #[yes / no], auto for no, use virtual files for the merged SLCs and geometry
 isce.coregistration     = NESD                       #[geometry / NESD], auto for geometry
 isce.swathNum           = auto                       #[1,2,3], auto for '1,2,3'
-isce.numConnection      = 3                          #[int>=1], auto for 3
+isce.numConnection      = 10                          #[int>=1], auto for 3
 isce.orbitDir           = /central/groups/simonsgroup/ykliu/z_common_data/aux_poeorb   #Directory with all orbit files
 isce.auxDir             = /central/groups/simonsgroup/ykliu/z_common_data/aux_cal      #Directory with all aux   files
 isce.startDate          = none                       #[20140825 / no], auto for none (1st date)

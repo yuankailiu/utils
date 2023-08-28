@@ -23,9 +23,10 @@ def cmdLineParse():
     Command line parser.
     '''
     EXAMPLE = """
-    plot_imgs.py -i 'ion/*_*/ion_cal/filt.ion'  --redo  --loc -3 --chan 2 --out pic/img_ion  --mark pairs_diff_starting_ranges.txt
-    plot_imgs.py -i 'ion_burst_ramp_merged_dates/*.float'     --redo  --loc -1 --chan 1 --out pic/img_ionRampDate
-    plot_imgs.py -i 'merged/interferograms/*_*/filt_fine.unw' --redo  --loc -2 --chan 2 --out pic/img_unw
+    plot_imgs.py -i 'ion/*_*/ion_cal/filt.ion' --redo --loc -3 --chan 2 --out pic/img_ion --mark pairs_diff_starting_ranges.txt
+    plot_imgs.py -i 'ion_azshift_dates' --redo --loc 1 --chan 1 --out pic/img_azshiftDate
+    plot_imgs.py -i 'ion_burst_ramp_merged_dates/*.float' --redo --loc -1 --chan 1 --out pic/img_ionRampDate --wrap 0.0628
+    plot_imgs.py -i 'merged/interferograms/*_*/filt_fine.unw' --redo --loc -2 --chan 2 --out pic/img_unw
     """
 
     parser = argparse.ArgumentParser(description='mdx plot a bunch of images (.int, .unw, .ion, .float, etc.).',

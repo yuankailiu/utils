@@ -1,0 +1,34 @@
+{
+  "database": "Zotero",
+  "noteImportFolder": "zoteronotes",
+  "pdfExportImageDPI": 120,
+  "pdfExportImageFormat": "jpg",
+  "pdfExportImageQuality": 90,
+  "citeFormats": [
+    {
+      "name": "Pandoc",
+      "format": "pandoc",
+      "brackets": true
+    },
+    {
+      "name": "AGU",
+      "format": "formatted-citation",
+      "cslStyle": "american-geophysical-union"
+    }
+  ],
+  "exportFormats": [
+    {
+      "name": "Create Literature Note",
+      "outputPathTemplate": "zoteronotes/{{citekey}}.md",
+      "imageOutputPathTemplate": "zoteronotes/{{citekey}}/",
+      "imageBaseNameTemplate": "image",
+      "cslStyle": "american-geophysical-union",
+      "templatePath": "obsidian/template/zotero_integration_phelan.md"
+    }
+  ],
+  "citeSuggestTemplate": "[[{{citekey}}]]",
+  "openNoteAfterImport": true,
+  "whichNotesToOpenAfterImport": "first-imported-note",
+  "shouldConcat": true,
+  "exeOverridePath": "/Users/ykliu/furnace/GitHub/kryptos/obsidian/pdfannots2json"
+}

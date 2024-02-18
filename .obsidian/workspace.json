@@ -1,0 +1,235 @@
+{
+  "main": {
+    "id": "e6ea8a40be83052b",
+    "type": "split",
+    "children": [
+      {
+        "id": "05afc3a43b460ae4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c74e641a655d96f9",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/HPC-isce2.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          },
+          {
+            "id": "3f31e627fc114d2f",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/useful_repos.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b4939dd4f32872d3",
+    "type": "split",
+    "children": [
+      {
+        "id": "4b94dbb63ec45787",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4c66c1d60b6ad5d3",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "171d728f685d56e8",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "2b8019f5c6ee56bf",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 276.5
+  },
+  "right": {
+    "id": "dead1c792541795e",
+    "type": "split",
+    "children": [
+      {
+        "id": "83cfc6ad1d457a06",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a396a933dedb879c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/useful_repos.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "4131444e71086c96",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/useful_repos.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "f83f7c5d73bfbb87",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              }
+            }
+          },
+          {
+            "id": "bfc7c5ad68cd67b9",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/useful_repos.md"
+              }
+            }
+          },
+          {
+            "id": "ee96bd26535330a1",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              }
+            }
+          },
+          {
+            "id": "71873e3e3cfcd399",
+            "type": "leaf",
+            "state": {
+              "type": "ReferenceListView",
+              "state": {}
+            }
+          }
+        ],
+        "currentTab": 3
+      }
+    ],
+    "direction": "horizontal",
+    "width": 200,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "3f31e627fc114d2f",
+  "lastOpenFiles": [
+    "docs/notes/README.md",
+    "docs/useful_repos.md",
+    "docs/kamb_setup.md",
+    "docs/topsApp.md",
+    "docs/HPC-isce2.md",
+    "docs/snaphu.md",
+    "docs/SettingKambKraken.md",
+    "README.md",
+    "shell/untar_batchREMA.sh",
+    "shell/transferFile.sh",
+    "shell/rc/bashrc_kamb",
+    "shell/rc/bashrc_arius",
+    "shell/rc/bashrc",
+    "shell/rc/bash_profile",
+    "shell/rc",
+    "shell/edit_stackConfig.sh",
+    "shell/bin/update_vscode.sh",
+    "shell/bin/mpl_setFont.sh",
+    "junk/tmp/SET_PSD_short.png",
+    "junk/tmp/SET_PSD_long.png",
+    "junk/tmp/SET_PSD.png",
+    "junk/tmp/Figure.png",
+    "Untitled.canvas",
+    "Jean-Plilip 277.md",
+    "02.coding/basics/latex.md",
+    "().md",
+    "01.projects/Ideas.md",
+    "01.projects/Aqaba_interseismic/README.md",
+    "01.projects/seismolab.md",
+    "02.coding/basics/jupyter_setup.md",
+    "02.coding/basics/bash_tips.md",
+    "04.lectures/ge167_tectonicGeodesy.md",
+    "02.coding/basics/bash_env_setup.md",
+    "02.coding/basics/conda_env_setup.md",
+    "02.coding/insar-related/HPC-isce2.md",
+    "03.readings/Paper_reviews/Guo_EPSL_2024.md",
+    "03.readings/Fault slip inversions.md",
+    "01.projects/Aqaba_interseismic/closurePhase.canvas",
+    "02.coding/insar-related/zebker_stanford.md",
+    "02.coding/insar-related/snaphu.md",
+    "01.projects/David_glacier/README.md",
+    "01.projects/Aqaba_interseismic/discussions.md",
+    "01.projects/Aqaba_interseismic/attachments/Pasted image 20231101092359.png",
+    "01.projects/Aqaba_interseismic/attachments/Pasted image 20231230210007.png",
+    "01.projects/Aqaba_interseismic/attachments/Pasted image 20231101092311.png",
+    "01.projects/Aqaba_interseismic/attachments/Pasted image 20231101092225.png",
+    "01.projects/Aqaba_interseismic/attachments/Pasted image 20231101092029.png",
+    "01.projects/Aqaba_interseismic/attachments/Pasted image 20231101091959.png",
+    "projects/Untitled.canvas"
+  ]
+}

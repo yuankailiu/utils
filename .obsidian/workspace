@@ -1,0 +1,171 @@
+{
+  "main": {
+    "id": "e6ea8a40be83052b",
+    "type": "split",
+    "children": [
+      {
+        "id": "d0a1033e1e3bab0d",
+        "type": "leaf",
+        "dimension": 31.44736842105263,
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "coding/insar-related/HPC-isce2.md",
+            "mode": "source",
+            "source": false
+          }
+        }
+      },
+      {
+        "id": "6d695e79163aefe6",
+        "type": "leaf",
+        "dimension": 40.78947368421053,
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "literatures/Fault slip inversions.md",
+            "mode": "source",
+            "source": false
+          }
+        }
+      },
+      {
+        "id": "db42777db4848998",
+        "type": "leaf",
+        "dimension": 27.76315789473684,
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "classes/acm_116.md",
+            "mode": "source",
+            "source": false
+          }
+        }
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "b4939dd4f32872d3",
+    "type": "split",
+    "children": [
+      {
+        "id": "4b94dbb63ec45787",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "4c66c1d60b6ad5d3",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          },
+          {
+            "id": "171d728f685d56e8",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "eb326ca4d97d997c",
+            "type": "leaf",
+            "state": {
+              "type": "starred",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 230.5
+  },
+  "right": {
+    "id": "dead1c792541795e",
+    "type": "split",
+    "children": [
+      {
+        "id": "83cfc6ad1d457a06",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a396a933dedb879c",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "coding/insar-related/HPC-isce2.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "4131444e71086c96",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "coding/insar-related/HPC-isce2.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "f83f7c5d73bfbb87",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              }
+            }
+          },
+          {
+            "id": "bfc7c5ad68cd67b9",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "coding/insar-related/HPC-isce2.md"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "active": "d0a1033e1e3bab0d",
+  "lastOpenFiles": [
+    "coding/basics/bash_tips.md",
+    "coding/basics/conda_env_setup.md",
+    "literatures/Fault slip inversions.md",
+    "coding/basics/git_github.md",
+    "coding/basics/github_repos.md",
+    "coding/basics/intro.md",
+    "coding/basics/jupyter_setup.md",
+    "coding/basics/vscode.md.md",
+    "coding/basics/kamb_setup.md",
+    "coding/csi/README.md.md"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "defaultViewMode": "source",
+  "readableLineLength": false,
+  "vimMode": false,
+  "alwaysUpdateLinks": true,
+  "promptDelete": true,
+  "lineWrap": true,
+  "attachmentFolderPath": "./attachments",
+  "newLinkFormat": "relative",
+  "spellcheck": false,
+  "spellcheckDictionary": [
+    "Eulerian",
+    "Eulerian",
+    "Eulerian",
+    "Thamer",
+    "InSAR",
+    "Yujie",
+    "iono"
+  ],
+  "showInlineTitle": false,
+  "livePreview": true,
+  "showLineNumber": false,
+  "showFrontmatter": false,
+  "foldHeading": true
+}

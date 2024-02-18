@@ -1,0 +1,11 @@
+{
+  "theme": "moonstone",
+  "translucency": false,
+  "cssTheme": "Shimmering Focus",
+  "baseFontSize": 16,
+  "enabledCssSnippets": [
+    "obsidian",
+    "big-math"
+  ],
+  "accentColor": "#1fbd00"
+}

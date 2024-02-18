@@ -15,14 +15,16 @@
 #       2. load mintpy from path (optional):
 #           This is just to use ptime function to convert YYMMDD to YYYYMMDD format
 
-import os
-import sys
-import glob
 import argparse
+import glob
+import os
 import subprocess
-import numpy as np
+import sys
 from datetime import datetime as dt
+
+import numpy as np
 from mintpy.utils import ptime
+
 
 def cmdLineParse():
     '''
@@ -73,7 +75,7 @@ if __name__ == '__main__':
     current_path = os.path.abspath(os.getcwd())
     print('Read acquisition dates from pair directories in the working path: %s' % current_path)
 
-    pairs = glob.glob('{}/*-*'.format(workdir))
+    pairs = glob.glob(f'{workdir}/20*-20*')
     refs = []
     secs = []
     for i in range(len(pairs)):
@@ -89,7 +91,7 @@ if __name__ == '__main__':
         secs = list(np.array(secs)[1:])
         print('Total number of dates: %d' % int(len(secs)+1))
         print('Set the first date as the common reference for baseline computation: %s' % refs[0])
-        res = "\n".join("{} {}".format(x, y) for x, y in zip(refs, secs))
+        res = "\n".join(f"{x} {y}" for x, y in zip(refs, secs))
         print(res)
 
     elif method == 'pairwise':
@@ -97,13 +99,13 @@ if __name__ == '__main__':
         secs = list(secs)
         print('Total number of pairs: %d' % len(secs))
         print('Pairwise reference_secondary for baseline computation')
-        res = "\n".join("{} {}".format(x, y) for x, y in zip(refs, secs))
+        res = "\n".join(f"{x} {y}" for x, y in zip(refs, secs))
         print(res)
 
 
     print('Start making baseline folders, compute baselines...')
-    print('Output files will be saved under {}/*_*'.format(outdir))
-    print('subprocess option: {}'.format(inps.subproc_opt))
+    print(f'Output files will be saved under {outdir}/*_*')
+    print(f'subprocess option: {inps.subproc_opt}')
 
     n = 0
     for i in range(len(secs)):
@@ -111,8 +113,8 @@ if __name__ == '__main__':
 
         reference = refs[i]
         secondary = secs[i]
-        baseline_pair = '{}_{}'.format(ptime.yyyymmdd(reference), ptime.yyyymmdd(secondary))
-        baseline_path = '{}/{}'.format(outdir, baseline_pair)
+        baseline_pair = f'{ptime.yyyymmdd(reference)}_{ptime.yyyymmdd(secondary)}'
+        baseline_path = f'{outdir}/{baseline_pair}'
 
         # Get paths of ref and sec acquisitions for this baseline pair
         p_ref = [p for p in pairs if reference in p][0]
@@ -126,8 +128,8 @@ if __name__ == '__main__':
             pos_sec=inps.reference_dir
         elif p_sec.split('/')[-1].split('-').index(secondary) == 1:
             pos_sec=inps.secondary_dir
-        refpath = '{}/{}'.format(p_ref, pos_ref)
-        secpath = '{}/{}'.format(p_sec, pos_sec)
+        refpath = f'{p_ref}/{pos_ref}'
+        secpath = f'{p_sec}/{pos_sec}'
 
         # Make baseline directory and have a baseline filename
         print('  ', baseline_pair)
@@ -135,19 +137,19 @@ if __name__ == '__main__':
             os.makedirs(baseline_path)
 
         # Write a logfile
-        f = open('{}/baselineCompute.log'.format(baseline_path), 'w+')
+        f = open(f'{baseline_path}/baselineCompute.log', 'w+')
         f.write('### [ Run computeBaseline.py ]\n')
-        f.write('#   >> Time   now    : {}\n'.format(start_dt))
-        f.write('#   >> Baseline pair : {}\n'.format(baseline_pair))
-        f.write('#   >> Reference path: {}\n'.format(refpath))
-        f.write('#   >> Secondary path: {}\n\n'.format(secpath))
+        f.write(f'#   >> Time   now    : {start_dt}\n')
+        f.write(f'#   >> Baseline pair : {baseline_pair}\n')
+        f.write(f'#   >> Reference path: {refpath}\n')
+        f.write(f'#   >> Secondary path: {secpath}\n\n')
 
         # Run `computeBaseline.py` and keep the output to the logfile
-        baseline_file = '{}/{}.txt'.format(baseline_path, baseline_pair)
+        baseline_file = f'{baseline_path}/{baseline_pair}.txt'
 
         if inps.subproc_opt == 'run':
             # subprocess option 1: sequential computing
-            bashCmd = 'computeBaseline.py -m {} -s {} -b {}'.format(refpath, secpath, baseline_file)
+            bashCmd = f'computeBaseline.py -m {refpath} -s {secpath} -b {baseline_file}'
             process = subprocess.run(bashCmd, stdout=f, shell=True)
 
         elif inps.subproc_opt == 'popen':

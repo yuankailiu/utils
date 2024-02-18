@@ -1,2 +1,0 @@
-34.562252   28.933946   8,Times-Bold,black    70  Gulf of Aqaba
-36.800000   23.300000   12,Times-BoldItalic,27/67/96   300 Red Sea

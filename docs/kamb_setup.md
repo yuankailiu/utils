@@ -1,6 +1,6 @@
 # Intro of what to do
 
-A large portion of Geophysics is about computing stuff. The amount of computation can somtimes (if not always) exceeds what your personal computer can handle within reasonable time. Plus we want to prolong the lifespan of our own laptops. A common practice here in Seismolab is that each research group has its own group cluster (sitting behind the printing room on the 2nd floor of South Mudd) for computation. The operating system is Linux. Students will be granted access to the group cluster(s) to which they belong. Ex. If you work with Mark and Zach, you will have access to both of their clusters. All Seismolab machines are managed by Scott Dugan, our GPS tech admin.
+A large portion of Geophysics is about computing stuff. The amount of computation can somtimes (if not always) exceeds what your personal computer can handle within reasonable time. Plus we want to prolong the lifespan of our own laptops. A common practice here in Seismolab is that each research group has its own group cluster (sitting behind the printing room on the 2nd floor of South Mudd) for computation. The operating system is Linux. Students will be granted access to the group cluster(s) to which they belong. Ex. If you work with Mark and Zach, you will have access to both of their clusters. All Seismolab machines are managed by Scott Dungan <sdungan@caltech.edu>, our GPS tech admin.
 
 
 # Beginners
@@ -9,17 +9,14 @@ Here are some things to get started on. Feel free to quickly skim or skip some. 
 ### Account:
 1. Make sure you’ve sent Scott Dugan your Caltech email address. Read his instructions in his reply.
 	- In Mark's group, available machines are: `kamb`, `hokkaido`, `kyushu`, `shikoku`, `honshu`
-2. Request a Caltech VPN (helpful when you work off-campus): [https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN](https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN)
+2. [Request a Caltech VPN](https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN/vpn-apps-students) (helpful when you work off-campus)
 ### Linux:
 - Get a terminal app that you feel happy about. Rather than the built-in Mac Terminal, I like [iterm2](https://iterm2.com/).
-- Get familiar with the terminal, read any simple online blog/tutorial (but don't get sucked into it):
-	  ex. [https://ubuntu.com/tutorials/command-line-for-beginners#1-overview](https://ubuntu.com/tutorials/command-line-for-beginners#1-overview)
-- Text editing. How to use `vim`:
-	  ex. https://medium.com/@BetterEverything/using-vim-to-make-and-edit-files-on-linux-is-easy-with-these-steps-5b47e00b9d22
-- Connect to servers. Read about SSH:
-	  ex. [https://www.baeldung.com/cs/ssh-intro](https://www.baeldung.com/cs/ssh-intro)
+- Get familiar with the terminal, read any simple online blog/tutorial ([like this](https://ubuntu.com/tutorials/command-line-for-beginners#1-overview), but don't get sucked into it).
+- Text editing. How to use `vim`, check [this](https://medium.com/@BetterEverything/using-vim-to-make-and-edit-files-on-linux-is-easy-with-these-steps-5b47e00b9d22) out:
+- Connect to servers. Read about [SSH]([https://www.baeldung.com/cs/ssh-intro](https://www.baeldung.com/cs/ssh-intro)).
 ### Conda:
-- Read about conda (but don't get sucked into it): [https://docs.conda.io/en/latest/](https://docs.conda.io/en/latest/)
+- Spend a little time read about [conda]([https://docs.conda.io/en/latest/](https://docs.conda.io/en/latest/)) (don't get sucked into it).
 ### Programming IDEs
 Different people have varying preferences when it comes to IDEs. While some people might not use them at all (always do `SSH` and `vim`), others may rely on several for different tasks. Here are a few popular ones for Python users:
 - **Jupyter Notebook:** Great for interactive code-writing at early stages, data visualization, and going through tutorials that were written as Notebooks. Even writing your homework. [Learn more about Jupyter Notebook](https://realpython.com/jupyter-notebook-introduction/).
@@ -31,7 +28,7 @@ Feel free to explore more (`Spyder`, `pycharm`).
 # Setting up your home
 
 Here is some guidance for setting up the computer (environments on Kamb) ready for the InSAR, geodetic-related works. Other than some specialized packages, here are general tools you may be using in the future:
-- [Python](https://www.python.org/) 
+- [Python](https://www.python.org/) (most InSAR tools we use are in Python)
 - [Jupyter Notebooks](https://jupyter.org/)
 - Python's [matplotlib](https://matplotlib.org/) module for simple plots
 - [Generic Mapping Tools (GMT)](https://www.generic-mapping-tools.org/) for plotting maps.
@@ -254,9 +251,9 @@ We will use `git` to get the source codes of `ARIA-tools` (getting the InSAR unw
 
 [git](https://git-scm.com/) is an open source [version control system](https://www.atlassian.com/git/tutorials/what-is-version-control). You can find some very basic tutorials online if you are bored. Otherwise, we will only use the very basic stuff of `git` (e.g. how to download source codes of a open source software). The things explained in this document about `git` will be enough for us now. Feel free to register a GitHub account.
 
-1. You might already have `git` installed on Kamb. If not, simply install it in the `base` conda env
+You might already have `git` installed on Kamb. If not, simply install it in the `base` conda env
    
-   ```bash
+```bash
 # Go to Kamb
 ssh kamb
 
@@ -267,7 +264,7 @@ mamba install git
 
 # check git version (you should have version >= 2.30.2)
 git version
-   ```
+```
 
 
 ## 4. Install InSAR software

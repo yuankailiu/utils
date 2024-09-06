@@ -260,6 +260,7 @@ module list
 
 # check available cuda versions
 module avail cuda
+module av | grep cuda
 module avail gcc
 ```
 

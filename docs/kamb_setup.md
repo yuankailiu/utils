@@ -1,70 +1,121 @@
-# Setting up kamb & kraken
+# Intro of what to do
 
-We will use [Python](https://www.python.org/) and [Jupyter Notebooks](https://jupyter.org/) for computation, Python's [matplotlib](https://matplotlib.org/) module for simple plots, and [Generic Mapping Tools (GMT)](https://www.generic-mapping-tools.org/) for plotting maps. Here is some guidance for setting up the computer (Kamb) ready for the InSAR-related works
+A large portion of Geophysics is about computing stuff. The amount of computation can somtimes (if not always) exceeds what your personal computer can handle within reasonable time. Plus we want to prolong the lifespan of our own laptops. A common practice here in Seismolab is that each research group has its own group cluster (sitting behind the printing room on the 2nd floor of South Mudd) for computation. The operating system is Linux. Students will be granted access to the group cluster(s) to which they belong. Ex. If you work with Mark and Zach, you will have access to both of their clusters. All Seismolab machines are managed by Scott Dugan, our GPS tech admin.
+
+
+# Beginners
+Here are some things to get started on. Feel free to quickly skim or skip some. The idea is to know some vocabulary.
+
+### Account:
+1. Make sure you’ve sent Scott Dugan your Caltech email address. Read his instructions in his reply.
+	- In Mark's group, available machines are: `kamb`, `hokkaido`, `kyushu`, `shikoku`, `honshu`
+2. Request a Caltech VPN (helpful when you work off-campus): [https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN](https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN)
+### Linux:
+- Get a terminal app that you feel happy about. Rather than the built-in Mac Terminal, I like [iterm2](https://iterm2.com/).
+- Get familiar with the terminal, read any simple online blog/tutorial (but don't get sucked into it):
+	  ex. [https://ubuntu.com/tutorials/command-line-for-beginners#1-overview](https://ubuntu.com/tutorials/command-line-for-beginners#1-overview)
+- Text editing. How to use `vim`:
+	  ex. https://medium.com/@BetterEverything/using-vim-to-make-and-edit-files-on-linux-is-easy-with-these-steps-5b47e00b9d22
+- Connect to servers. Read about SSH:
+	  ex. [https://www.baeldung.com/cs/ssh-intro](https://www.baeldung.com/cs/ssh-intro)
+### Conda:
+- Read about conda (but don't get sucked into it): [https://docs.conda.io/en/latest/](https://docs.conda.io/en/latest/)
+### Programming IDEs
+Different people have varying preferences when it comes to IDEs. While some people might not use them at all (always do `SSH` and `vim`), others may rely on several for different tasks. Here are a few popular ones for Python users:
+- **Jupyter Notebook:** Great for interactive code-writing at early stages, data visualization, and going through tutorials that were written as Notebooks. Even writing your homework. [Learn more about Jupyter Notebook](https://realpython.com/jupyter-notebook-introduction/).
+    
+- **Visual Studio Code (VS Code):** A versatile and widely-used editor that supports numerous programming languages and extensions. It's known for its rich feature set and customizability.
+    
+Feel free to explore more (`Spyder`, `pycharm`).
+
+# Setting up your home
+
+Here is some guidance for setting up the computer (environments on Kamb) ready for the InSAR, geodetic-related works. Other than some specialized packages, here are general tools you may be using in the future:
+- [Python](https://www.python.org/) 
+- [Jupyter Notebooks](https://jupyter.org/)
+- Python's [matplotlib](https://matplotlib.org/) module for simple plots
+- [Generic Mapping Tools (GMT)](https://www.generic-mapping-tools.org/) for plotting maps.
 
 Things that will be covered here:
 
-- Paths and environments settings on Kamb (named after the glaciologist [Barclay Kamb](https://calteches.library.caltech.edu/4534/1/Obituary.pdf); The server of Mark Simons group where we run computations)
+- Paths and environments settings on Kamb (The server of Mark Simons group where we run computations, named after the glaciologist [Barclay Kamb](https://calteches.library.caltech.edu/4534/1/Obituary.pdf))
 - Setup to run Jupyter Notebooks on Kamb
   - Jupyter Notebook provides a Matlab-like interface to run Python code and display results and plots.
-  - There are several useful notebooks for the tutorials of `ARIA-tools` and `MintPy` available provided by the developers.
+  - For interferograms and time-series analysis, there are several useful notebooks for the tutorials of `ARIA-tools` and `MintPy` available provided by the developers.
 - Installation of `ARIA-tools` and `MintPy` 
 
-Available machines/servers:
+## Know the machines
 
 ```bash
-## Machines to run computation: (You can access your same home directory when you login to any one of the below servers;
-##                                                               you can save up to 100 GB in your home directory;
-##                                                            the home directory is backup daily)
+########################
+#   Computing nodes
+########################
 
-    # Kamb has 16 CPUs + 8 GPUs (Tesla P100-PCIE-12GB)
-kamb@gps.caltech.edu
-
-    # The following each has 32 CPUs + no GPUs
-hokkaido@gps.caltech.edu
-honshu@gps.caltech.edu
-kyushu@gps.caltech.edu
-shikoku@gps.caltech.edu
+# Kamb: kamb@gps.caltech.edu
+# disk space : 100 GB (personal space in your home)
+# computation: has 48 CPUs + 8 GPUs (Tesla V100-PCIE-16GB)
+# usage:       major login server; home directory; install your packages/codes; light storage, run CPU/GPU tasks
+# backup:      the home directory is backup daily
 
 
-## Storage servers: (you can make symbolic links at your home directory and easily access these storage disks)
-/net/kraken/nobak        # You can store 20TB in the 'nobak; NOT backed up
-/net/kraken/bak            # You can store 5TB in the 'bak'; backed up. You have 60 days of backup. After 60 days, deleted files cannot be restored.
-/marmot-nobak/            # You can store more than 20TB currently; NOT backed up
+# Four CPU nodes:
+#    hokkaido@gps.caltech.edu
+#    honshu@gps.caltech.edu
+#    kyushu@gps.caltech.edu
+#    shikoku@gps.caltech.edu
+# disk space : N/A (connects to your home/ on Kamb)
+# computation: has 32 CPUs + no GPUs
+# usage:       can also login there, share the same home dir with Kamb, has the same package/env you setup; run CPU tasks
+# backup:      N/A
+
+
+########################
+#   Storage servers
+########################
+
+# /net/kraken/nobak        
+# You can store 20TB in the 'nobak'; NOT backed up
+
+# /net/kraken/bak
+# You can store 5TB in the 'bak'; backed up. You have 60 days of backup. After 60 days, deleted files cannot be restored.
+
+# /marmot-nobak/
+# You can store more than 20TB currently; NOT backed up
+
+# How to use these storage servers:
+#  1. Go there and create your own directory (mkdir yourusername)
+#  2. Make symbolic links at your home directory and easily access these storage disks
 ```
 
-Let's get started!
 
-<br />
+## 0. An easier way of SSH (optional, but good for laziness)
 
-## 0. SSH to Kamb (a setup for the laziness from human nature)
+To access the Kamb server, you'll need to use SSH each time with the command: `ssh username@kamb.gps.caltech.edu`. 
+The `username` is your GPS division username, the one you got from Scott. You'll be prompted to enter your password.
+Typing more means more labor. Let's avoid that. Check out this [guidance](https://www.thegeekstuff.com/2008/11/3-steps-to-perform-ssh-login-without-password-using-ssh-keygen-ssh-copy-id/) (Step1 to Step3 will do it).
 
-In order get into the Kamb server, you will need to do the ssh every time, such as, `ssh username@kamb.gps.caltech.edu`. This requires you to enter the password every time. There is a way to avoid entering password so frequently. Checkout this [guidance](https://www.thegeekstuff.com/2008/11/3-steps-to-perform-ssh-login-without-password-using-ssh-keygen-ssh-copy-id/) (Step1 to Step3 will do it).
+After setting the above, we don't need to type a password. But we still need to type our username and the full IP address when doing SSH, i.e., `ssh username@kamb.gps.caltech.edu`
 
-<br />
-
-After setting the above, we don't need to type password every time. But we still need to type our username and the full IP address when doing ssh, i.e., `ssh username@kamb.gps.caltech.edu`
-
-To further save some effort, we can create SSH alias names. Do the following on our laptop:
+To further save your energy, we can create alias names for SSH on your local computer. Do the following on **your own laptop**:
 
 ```bash
 # First open the terminal on your laptop
 
-# go into .ssh directory (if not exist, make one)
+# go into .ssh directory (if not exist, make one by mkdir .ssh/)
 cd ~/.ssh
 
 # create or edit a config file
-vi config
+touch config
 
+```
 
-## ========================================== ##
-##   Paste the following in that config file  ##
-## ========================================== ##
+Copy and paste the following content in that config file, remember to change `your_user_name` to your username.
 
+```bash
 # KAMB server: Mark Simon's group
 Host kamb
     Hostname kamb.gps.caltech.edu
-    User my_name
+    User your_user_name
     ServerAliveInterval 720
     ServerAliveCountMax 120
     ForwardX11Timeout = 24h
@@ -72,39 +123,43 @@ Host kamb
 # EARTH server: Caltech GPS server
 Host earth
     Hostname earth.gps.caltech.edu
-    User my_name
+    User your_user_name
     ServerAliveInterval 720
     ServerAliveCountMax 120
     ForwardX11Timeout = 24h
 
-
 # Other servers: you can do the same thing on Hokkaido, Honshu, Kyushu, Shikoku, 
-Host name_of_server
-    Hostname name_of_server.gps.caltech.edu
-    User my_name
-    ServerAliveInterval 720
-    ServerAliveCountMax 120
-    ForwardX11Timeout = 24h    
+# Host name_of_server
+#    Hostname name_of_server.gps.caltech.edu
+#    User your_user_name
+#    ServerAliveInterval 720
+#    ServerAliveCountMax 120
+#    ForwardX11Timeout = 24h
+
 ```
 
 Now, you don't need to type the username and the full IP address. From your laptop, you can log into Kamb by simply doing:
 
 ```bash
 ssh kamb
+ssh earth
 ```
+
+If you are using off-campus internet, you might not SSH onto some machines without first connecting to [Caltech VPN](https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN). `kamb` and `earth` works for me without VPN. But other machines require that.
 
 <br />
 
-## 1. Access to Kraken
+## 1. Access to Kraken and Marmot
 
-- Kraken is another server especially meant to store data. It is named after the [sea monster in Scandinavian folklore](https://en.wikipedia.org/wiki/Kraken); like a hub connecting to other machines with its' strong and agile tentacles.
+- Kraken is a disk server meant to store data. It is named after the [sea monster in Scandinavian folklore](https://en.wikipedia.org/wiki/Kraken); like a hub connecting to other machines with its' strong and agile tentacles.
+- [Marmot](https://natural-history-journal.blogspot.com/2016/09/yellow-bellied-marmot-denizen-of-high.html)
 - Two subfolders under Kraken: `bak` (60-day backup for saving just codes) and `nobak` (no backup for saving Gigabyte-sized datasets)
 
 ```bash
 # SSH to Kamb server, you will be at your home directory on Kamb
 ssh username@kamb.gps.caltech.edu
 
-# Go kraken, the no backup directory for storting large dataset (up to 20TB)
+## Go Kraken-nobak, the no backup directory for storing large datasets (up to 20TB)
 cd /net/kraken/nobak/
 
 # make your own folder here
@@ -113,7 +168,9 @@ mkdir my_name
 # make a symbolic link of this path to your home directory
 ln -s /net/kraken/nobak/my_name ~/kraken-nobak
 
-# Go to kraken, the 60-day backup directory for storing codes, notes, etc (up to 5TB)
+
+## Go to Kraken-bak, the 60-day backup directory for storing codes, notes, etc (up to 5TB)
+cd /net/kraken/bak/
 
 # make your own folder here
 mkdir my_name
@@ -121,47 +178,73 @@ mkdir my_name
 # make a symbolic link of this path to your home directory
 ln -s /net/kraken/bak/my_name ~/kraken-bak
 
-## Now everytime you log on kamb, you will see and can `cd` into kraken (either bak or nobak)
+
+## Go to marmot-nobak, do the same thing
+cd /marmot-nobak
+mkdir my_name
+ln -s /marmot-nobak/my_name ~/marmot-nobak
+
+## Now every time you log on to kamb, you will see and can `cd` into your folder on kraken-bak, kraken-nobak, marmot-nobak
 ## easily without needing to type the full paths to access them.
 ```
 
 <br />
 
-## 2. Install Miniconda on Kamb
+## 2. Install Conda on Kamb
+
+During your career path here, you will do seismology, GPS, InSAR, forward/inverse modeling, machine learning, etc. You will use many different codes, and packages that require quite different computer prerequisites and environments. [That is why we need conda to manage all these nerdy stuff](https://www.freecodecamp.org/news/why-you-need-python-environments-and-how-to-manage-them-with-conda-85f155f4353c/). 
 
 ```bash
-# Go to kamb (a lazy way here)
+# Go to kamb (a lazy way now)
 ssh kamb
 
-# Create a tools directory (for all the downloaded softwares, source codes) at your home directory on Kamb
-# -p command: make this directory if not exist. Then we `cd` into tools folder
+# Create a tools directory (where you will store all downloaded software, and source codes) at your home directory on Kamb
+# -p command: make this directory if not exist. Then we `cd` into the tools folder
 mkdir -p ~/tools; cd ~/tools
 
-# download (mini/ana)conda. Miniconda is better, a light version without many useless stuff
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+# get the installer from web (for macOS, use Miniforge3-MacOSX-x86_64.sh, and optionally use `curl -L -O https://...` syntax to download)
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 
-# make the bash script executable
-chmod +x Miniconda3-latest-Linux-x86_64.sh
+# install it under ~/tools/
+bash Miniforge3-Linux-x86_64.sh -b -p ~/tools/miniforge
 
-# run it to install
-./Miniconda3-latest-Linux-x86_64.sh -b -p ~/tools/miniconda3
-~/tools/miniconda3/bin/conda init bash
+# initialize it
+~/tools/miniforge/bin/mamba init bash
 
-# Close and restart the shell for changes to take effect.
-exit                 # logout
-ssh kamb                     # login again
+# Close and restart the shell for changes to take effect. 
+exit                         # logout
+ssh kamb                     # login again; you will see on your command line prompt: (base) username@kamb
 
-# First, set conda-forge as default conda channels 
+
+# set conda-forge as the default conda channels 
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
-# now you can make your new conda env and install stuff under that env
-conda create --name your_new_env
-conda activate your_new_env
+# install the following basic utilities under the (main) env
+mamba install wget git tree numpy --yes
+pip install bypy
+
+
+# Now you can make your new conda env and install stuff under 
+mamba create --name your_new_env       # create a env
+mamba activate your_new_env            # activate this env
+mamba install some_packages_you_want   # install new stuff
+mamba deactivate                       # leave this env
+```
+Reference of the above guidance: [Yunjun's GitHub repository](https://github.com/yunjunz/conda-envs) ([Yunjun Zhang](https://github.com/yunjunz) was a postdoc here, the developer of `MintPy`, and my InSAR mentor!).
+
+See [Conda Cheatsheet](https://docs.conda.io/projects/conda/en/4.6.0/_downloads/52a95608c49671267e40c689e0bc00ca/conda-cheatsheet.pdf)
+The basic `mamba` and `conda` commands are usually used interchangeably. Calling `mamba` is much faster. But `conda` has the complete utilities.
+```bash
+# Below are equivalent
+
+# This is faster
+mamba install some_packages_you_want
+
+# This is usually slower
 conda install some_packages_you_want
 ```
 
-Reference of the above guidance: [Yunjun's GitHub repository](https://github.com/yuankailiu/conda_envs) (Yunjun is the postdoc here. He is the developer of MintPy. so, we will use this site again when installing MintPy)
 
 <br />
 
@@ -169,271 +252,82 @@ Reference of the above guidance: [Yunjun's GitHub repository](https://github.com
 
 We will use `git` to get the source codes of `ARIA-tools` (getting the InSAR unwrapped datasets) and `MintPy` (doing InSAR time-series analysis).
 
-[git](https://git-scm.com/) is an open source [version control system](https://www.atlassian.com/git/tutorials/what-is-version-control). You can find some very basic tutorials online if you are bored. Otherwise, we will only use the very basic stuff of `git` (e.g. how to download source codes of a open source software). The things explained in this document about `git` will be enough for us now.
+[git](https://git-scm.com/) is an open source [version control system](https://www.atlassian.com/git/tutorials/what-is-version-control). You can find some very basic tutorials online if you are bored. Otherwise, we will only use the very basic stuff of `git` (e.g. how to download source codes of a open source software). The things explained in this document about `git` will be enough for us now. Feel free to register a GitHub account.
 
 1. You might already have `git` installed on Kamb. If not, simply install it in the `base` conda env
    
    ```bash
-   # Go to Kamb
-   ssh kamb
-   
-   # You are now at the base env. The prompt will show (base)
-   
-   # Install git via conda
-   conda install git
-   
-   # check git version (you should have version >= 2.30.2)
-   git version
+# Go to Kamb
+ssh kamb
+
+# You are now at the base env. The prompt will show (base)
+
+# Install git via conda
+mamba install git
+
+# check git version (you should have version >= 2.30.2)
+git version
    ```
 
-2. Now we can downlaod the "softwares" of ARIA-tools and MintPy. They are just a bunch of source codes written in Python, C, etc
-   
-   ```bash
-   # Go to the tools folder on Kamb
-   cd ~/tools
-   
-   ## git clone whatever you like from Github 
-   # [Optional] use git clone to download these open source softwares reposited at GitHub
-   git clone https://github.com/aria-tools/ARIA-tools.git
-   git clone https://github.com/insarlab/MintPy.git
-   git clone https://github.com/insarlab/PySolid.git
-   git clone https://github.com/yunjunz/PyAPS.git
-   
-   # [Optional] Also, git clone the documentation and tutorials for the ARIA-tools
-   git clone https://github.com/aria-tools/ARIA-tools-docs.git
-   
-   # Now you can see these folders (ARIA_tools, MintPy, PySolid, PyAPS) under tools directory
-   ls
-   ```
 
-Next, we will start to prepare the python environment and install some pre-requisites for running the above softwares.
+## 4. Install InSAR software
+
+```bash
+# From your laptop,SSH to Kamb
+ssh kamb
+
+# You can create a new insar env for these software
+# create a new conda env called insar
+mamba create --name insar --yes
+mamba activate insar
+```
+
+Starting as an end-user, if you are not helping to develop the codes, just follow **Option1** here to install the `isce2` and `mintpy` stable releases on conda:
+https://github.com/yunjunz/conda-envs?tab=readme-ov-file#2-install-isce-2-and-mintpy
+
+This will install all the prerequisites and `isce2` and `mintpy` to your `insar` env.
+
+Now, every time we want to use those software, we will just SSH to kamb, and activate the env.
+
+```bash
+# warm up conda environment
+mamba activate insar
+
+# Run the following to test the installation:
+topsApp.py -h            # test ISCE-2
+smallbaselineApp.py -h   # test MintPy
+
+
+# If you want to go to the base env
+mamba deactivate
+```
 
 <br />
 
-## 4. Setting up `conda` Python environment
 
-1. Prepare the `base` environment for running Jupyter Notebook. Do the following:
-   
-   ```bash
-   # First, the env you want to launch Jupyter (usually the base env) should intalled with nb_conda
-   conda activate base
-	# deprecated with mamba, don't use this one
-    # conda install --channel conda-forge nb_conda
-	# check this instead:
-	https://ipython.readthedocs.io/en/stable/install/kernel_install.html
-   ```
+## 5. How to run Jupyter Notebook on Kamb?
 
-2. Prepare a new environment for `ARIA-tools` and `MintPy` and their dependencies. We will create a new environment called `insar`. Do the following:
-   
-   ```bash
-   # Create a new env for the InSAR softwares (ARIA-tools and MintPy)
-   conda create -n insar    # create the env called "insar"
-   conda activate insar         # warm up the "insar" env
-   
-   # Install some packages:
-   # - python
-   # - numpy
-   # - matplotlib: matlab-like plotting in python
-   # - jupyter: jupyter notebook
-   # - jupyterlab: jupyter lab (an advanced, powered version of jupyter notebook)
-   conda install --channel conda-forge --yes python numpy matplotlib jupyter jupyterlab
-   
-   # Install the packages required by those softwares (ARIA-tools, MintPy)
-   conda install --channel conda-forge --yes --file ~/tools/MintPy/docs/conda.txt --file ~/tools/ARIA-tools/requirements.txt
-   
-   # Install third-party dependencies required by ARIA-tools (not available from conda)
-   # Simply run the `setup.py` script which allows for easy compilation and installation of third-party dependencies (c-code).
-   cd ~/tools/ARIA-tools/
-   python setup.py build
-   python setup.py install
-   
-   # Install third-party dependencies required by MintPy (not available from conda)
-   ln -s ${CONDA_PREFIX}/bin/cython ${CONDA_PREFIX}/bin/cython3
-   $CONDA_PREFIX/bin/pip install git+https://github.com/tylere/pykml.git
-   $CONDA_PREFIX/bin/pip install scalene      # CPU, GPU and memory profiler
-   $CONDA_PREFIX/bin/pip install ipynb        # import functions from ipynb files
-   
-   # Compile PySolid (requireed by MintPy)
-   cd ~/tools/PySolid/pysolid
-   f2py -c -m solid solid.for
-   ```
+We all know how to run Jupyter on our own laptop. How about on a remote server like `kamb`?
 
-3. Set the following environment variables (paths) in your  `~/.bashrc`  on Kamb. So that every time when you log in Kamb, the paths of ARIA-tools and MintPy are all set automatically, and you can call their functions whereever you are on Kamb.
-   
-   ```bash
-   # Open the .bashrc file at your home directory on Kamb
-   vi ~/.bashrc
-   
-   ## ====================================================================== ##
-   ##          Paste the following to the end of the .bashrc file            ##
-   ## ====================================================================== ##
-   
-   # Define the root directory
-   export TOOL_DIR=~/tools
-   export DATA_DIR=~/data   # data / nobak
-   
-   if [ -z ${PYTHONPATH+x} ]; then export PYTHONPATH=""; fi
-   
-   ##-------------- MintPy / PyAPS / PySolid -------------##
-   export MINTPY_HOME=${TOOL_DIR}/MintPy
-   export PYTHONPATH=${PYTHONPATH}:${MINTPY_HOME}:${TOOL_DIR}/PyAPS:${TOOL_DIR}/PySolid
-   export PATH=${PATH}:${MINTPY_HOME}/mintpy
-   export WEATHER_DIR=${DATA_DIR}/aux
-   
-   ##-------------- ARIA-tools ---------------------------##
-   export ARIATOOLS_HOME=${TOOL_DIR}/ARIA-tools/tools
-   export PYTHONPATH=${PYTHONPATH}:${ARIATOOLS_HOME}
-   export PATH=${PATH}:${ARIATOOLS_HOME}/bin
-   ```
+The basic idea: [online reference here](https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook/).
 
-4. Now, `exit` Kamb (or just close the terminal) and re-login to see if all the installations are good.
-   
-   ```bash
-   # disconnect kamb, or just close the terminal
-   exit
-   
-   # re-login
-   ssh kamb
-   
-   # first activate the `insar` conda env
-   # you must activate it every time you log in to use this env
-   conda activate insar
-   
-   # testing these softwares
-   ariaDownload.py -h       # test ARIA-tools
-   smallbaselineApp.py -h   # test MintPy
-   solid_earth_tides.py -h  # test PySolid
-   tropo_pyaps3.py -h       # test PyAPS
-   ```
+One way to use Jupyter Notebook on Kamb is to [forward a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer but gets the data through the tunnel from the server. With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
 
-5. Finally, we need to setup our account to use PyAPS to download Global Atmospheric Models for tropospheric delays correction. Please check [here](https://github.com/insarlab/MintPy/blob/main/docs/installation.md#notes-on-pyaps) about how to do it. 
+This Jupyter instance will only run as long as you have your SSH connection and shell open. If you want to keep Jupyter running even while you're logged out, you can open a **[Linux screen instance](https://linuxize.com/post/how-to-use-linux-screen/)**, and run the Jupyter command in there (that's what I do). Simply detach the `screen` and it'll stay running in the background. The next time you SSH into the machine, just open that same link as before, and your Jupyter process will be ready where you left it off.
 
-**Full version of the installation guide of MintPy and associated dependencies**: Please check the [official MintPy Installation guide](https://github.com/insarlab/MintPy/blob/main/docs/installation.md) written by the developer of MintPy, [Yunjun Zhang](https://github.com/yunjunz).
-
-<br />
-
-## 5. How to use Jupyter Notebook on Kamb?
-
-**The basic idea of this guide is from the [online reference here](https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook/).**
-
-One way to use Jupyter Notebook on Kamb is to [forward a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer, but gets the data through the tunnel from the server. With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
-
-This Jupyter instance will only run as long as you have your SSH connection and shell open. If you want to keep Jupyter running even while you're logged out, you can open a [Linux screen instance](https://linuxize.com/post/how-to-use-linux-screen/), and run the Jupyter command in there (that's what I do). Simply detach the screen and it'll stay running in the background. The next time you SSH into the machine, just open that same link as before, and your Jupyter process will be ready where you left it off.
-
-By defining some bash aliases, we can achieve what we want easily:
-
-1. First, open a terminal on your laptop
-
-2. Open the ~/.bashrc by doing `vi ~/.bashrc`  
-
-3. Append the below content at the end of  your ~/.bashrc file
-   
-   ```bash
-   ##-----------USINGING JUPYTER NOTEBOOKS FROM REMOTE------------##
-   function jpn(){
-           # run jupyter notebook. Example: jpn 5550
-       jupyter notebook --no-browser --port=$1
-   }
-   
-   function jpl(){
-           # run jupyter lab. Example: jpl 5550
-       jupyter lab --no-browser --port=$1
-   }
-   
-   function tport(){
-           # forward the remote port to a local port. Example: tport 5550 5551
-       ssh -N -f -L localhost:$2:localhost:$1 $3
-   }
-   
-   function kport(){
-           # kill the forwarded port connection. Example: kport 5551 (equivalent to kport 5550)
-       port=$(ps aux|grep ssh|grep localhost|grep $1|awk '{print $2}')
-       if [ -z "$port" ]
-       then
-               echo '>> No forwarded port:'$1
-               echo '>> Check all SSH here:'
-               ps aux|grep ssh
-       else
-               while true; do
-                   echo '>> Found process: '
-                   echo '>>' $(ps aux|grep ssh|grep localhost|grep $1)
-                   read -p ">> Do you wish to stop this process? [y]/n: " yn
-                   case $yn in
-                    [Yy]* ) kill $port; break;;
-                    [Nn]* ) break;;
-                    * ) echo "Enter [y] or [n].";;
-                   esac
-               done
-       fi
-   }
-   ```
-
-4. Do the same thing to the `~/.bashrc` file on your KAMB account
-
-5. Close both terminals on your laptop and on Kamb
-
-6. Re-open both terminals on your laptop and on Kamb, try those new functions we just defined
-
-<br />
-
-**If failed**: After doing the above, if your terminal still shows the error `command not found` when you run the newly defined functions (e.g., `jpn`, `jpl`, `tport`, `kport`), that means your `~/.bashrc` file [is not sourced by default](https://apple.stackexchange.com/questions/12993/why-doesnt-bashrc-run-automatically) when a Bash Shell terminal is opened. This could occur especially on your local machine (laptop). If that is the case, rather than pasting the contents to `~/.bashrc`, paste the above content to `~/.bash_profile` on your laptop. A quicker alternative way is to append `source ~/.profile` to the end of your `~/.bash_profile` file on your laptop. Close and reopen the terminal again, it should work.
-
-<br />
-
-**Functions explanations:**
-
-- Commands that are meant to be run on the remote machine (Kamb):
-  
-  - `jpn 5550 `: Run **Jupyter Notebook** in a specified port number #5550 in the background without opening it
-  - `jpl 5550`: Run **Jupyter Lab** instead
-
-- Commands that are meant to be run on the local machine (your laptop):
-  
-  - `tport 5550 5551 username@kamb`: Forward the remote port #5550 to a local port #5551 via a tunnel ssh to that user on KAMB
-  - `kport 5551`: kill the local port #5551
-
-**Step-by-step example:**
-
-​    After the above function definitions, we can do the following steps to run the Jupyter Notebook remotely:
-
-1. Go to **KAMB**. `ssh kamb`
-2. Open a "screen instance" and name it, such as, "jupyter". `screen -S jupyter`
-3. Run Jupyer Notebook in the background: `jpn 5550` (with a port 5550 at Kamb)
-4. Once it is run, you can copy the *token* that shows up (`token=1234567blablabla`).
-5. You can now detatch the screen session (or even exit Kamb, or close the terminal)
-6. Open a terminal **on your laptop**, do `tport 5550 5551` (forward port 5550 of Kamb to port 5551 of your local machine)
-7. **On the laptop**, open your web browser and enter the url `http://localhost:5551/` (we are going to listen to port 5551 locally)
-8. The web browser may ask you to enter the *token*. Enter the *token* you just copied.
-9. Now you can play the Jupyter Notebook!
-
-You only need to run step 1 to 6 once, the Notebook will always stand-by on Kamb in the background. Whenever you want to play the Notebook, just type the localhost:xxxx on the web browser to access it. This always requires your internet connection. So if your laptop internet connection is lost (e.g., your WiFi is bad, you go home from the office), you will need to re-do step 6 to forward the port again.
-
-**Notes:**
-
-- The port numbers can be anything as long as nobody else is currently using it. So, make sure to specify 4 or even 5 digits (e.g., 4851, 88974) to avoid conflicting with other users on Kamb.
-
-- On you laptop, when you don't want to listen to that port anymore, just do `kport xxxx` to kill the forwarding process (xxxx is your local port number).
-
-- On Kamb, if you want to terminate the Jupyter Notebook completely, just log into Kamb, reconnect the screen session where the notebook is running. Then do `Ctrl + C` to kill it.
-
-- The token-based authentication can be changed to a password-based authentication. Then you can set your own password to play Jupyter Notebook on the web browser without needing to copy paste the long token.
+**Guide: https://github.com/yunjunz/conda-envs/blob/main/docs/jupyter.md**
   
 
 <br />
 
-## 6. Credentials for downloading products from Earthdata
+## 6. Downloading products from Earthdata (Sentinel-1 data)
 
 1. Make sure you have an account for Earthdata Login: https://urs.earthdata.nasa.gov/profile
 
-2. Go to `Applications` > `Authorized Apps`
+2. You might have to manually check some agreements. Go to `Applications` > `Authorized Apps`
+   After checking, you should have these on the agreements page automatically.
 
-3. Manually add and authorize the following apps:
-
-
-Then, you should have these in the agreements page automatically.
-
-
-4. In order to [access data over HTTP from a web server with curls and wget](https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+cURL+And+Wget), we need to enter our account name and password every time. We can configure the account credentials in a file for automatic authentication (no need for username and password every time). Please do the following:
+3. In order to [access data over HTTP from a web server with curls and wget](https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+cURL+And+Wget), we need to enter our account name and password every time. We can configure the account credentials in a file for automatic authentication (no need for a username and password every time). Please do the following:
 
 ```bash
 # go to your home dir
@@ -454,7 +348,7 @@ cd ~
 touch .urs_cookies
 ```
 
-+ Now, `exit` the Kamb server and re-login again. Run the downlaod codes, see if you can download files without entering account info.
++ Now, `exit` the Kamb server and re-login again. Run the download script (you got from the ASF website for your selected datasets), see if you can download files without entering account info.
 
 <br />
 
@@ -510,30 +404,55 @@ fi
 
 <br />
 
-# Papers of `ARIA-tools` and `MintPy`:
 
-- Buzzanga, B., Bekaert, D. P. S., Hamlington, B. D., & Sangha, S. S. (2020). Towards Sustained Monitoring of Subsidence at the Coast using InSAR and GPS: An Application in Hampton Roads, Virginia. Geophysical Research Letters, 47, e2020GL090013. https://doi.org/10.1029/2020GL090013
-- Yunjun, Z., Fattahi, H., and Amelung, F. (2019), Small baseline InSAR time series analysis: Unwrapping error correction and noise reduction, *Computers & Geosciences*, *133*, 104331, doi:[10.1016/j.cageo.2019.104331](https://doi.org/10.1016/j.cageo.2019.104331), [arXiv](https://eartharxiv.org/9sz6m/), [data & figures](https://github.com/geodesymiami/Yunjun_et_al-2019-MintPy).
+# Extra practices
+1. Practice installing Conda on your own Mac.
+2. Create a conda environment, activate it, and write a Python script to print ‘hello world’.
+
+
+
+# Papers:
+
+Simons, M., & Rosen, P. A. (2007). Interferometric synthetic aperture radar geodesy. _Geodesy_, _3_, 391-446. [2nd edition 2015](https://simons.caltech.edu/publications/pdfs/Simons_etal_2015.pdf).
+
+#### `ISCE`
+[Rosen, P. A., Gurrola, E., Sacco, G. F., & Zebker, H. (2012, April). The InSAR scientific computing environment. In _EUSAR 2012; 9th European conference on synthetic aperture radar_ (pp. 730-733). VDE.](https://ieeexplore.ieee.org/abstract/document/6217174)
+
+Fattahi, H., P. Agram, and M. Simons (2016), A Network-Based Enhanced Spectral Diversity Approach for TOPS Time-Series Analysis, IEEE Transactions on Geoscience and Remote Sensing, 55(2), 777-786, doi:[10.1109/TGRS.2016.2614925](https://ieeexplore.ieee.org/abstract/document/7637021).
+
+#### `ARIA`
+Buzzanga, B., Bekaert, D. P. S., Hamlington, B. D., & Sangha, S. S. (2020). Towards Sustained Monitoring of Subsidence at the Coast using InSAR and GPS: An Application in Hampton Roads, Virginia. Geophysical Research Letters, 47, e2020GL090013. https://doi.org/10.1029/2020GL090013
+
+Bekaert, D., Arena, N., Bato, M. G., Buzzanga, B., Govorcin, M., Havazli, E., ... & Zinke, R. (2023, July). The Aria-S1-Gunw: The ARIA Sentinel-1 Geocoded Unwrapped Phase Product for Open Insar Science and Disaster Response. In _IGARSS 2023-2023 IEEE International Geoscience and Remote Sensing Symposium_ (pp. 2850-2853). IEEE.**DOI:** [10.1109/IGARSS52108.2023.10282671](https://doi.org/10.1109/IGARSS52108.2023.10282671)
+
+#### `MintPy`
+Yunjun, Z., Fattahi, H., and Amelung, F. (2019), Small baseline InSAR time series analysis: Unwrapping error correction and noise reduction, *Computers & Geosciences*, *133*, 104331, doi:[10.1016/j.cageo.2019.104331](https://doi.org/10.1016/j.cageo.2019.104331), [arXiv](https://eartharxiv.org/9sz6m/), [data & figures](https://github.com/geodesymiami/Yunjun_et_al-2019-MintPy).
 
 <br />
 
 # Reference & useful links
 
-The information/guidance provided in this document is not original. It is a condenced version from some of the the following sources. Please refer to the corresponding links to know more about the details.
+The information/guidance provided in this document is not original. It is a condensed version from some of the following sources. Please refer to the corresponding links to learn more about the details.
 
-### InSAR softwares & installation procedures
+### Online course
+- [UNAVCO InSAR courses](https://www.unavco.org/education/professional-development/short-courses/course-materials/insar/insar.html) 
++ [UNAVCO Short course material, 2020](https://github.com/isce-framework/isce2-docs): InSAR Processing and Time-Series Analysis for Geophysical Applications: InSAR Scientific Computing Environment (ISCE), ARIA Tools, and MintPy
 
-+ [ARIA, JPL](https://aria.jpl.nasa.gov/products/): overview, products explanations
+### InSAR software & installation procedures
 
-+ [ARIA-tools]( https://github.com/aria-tools/ARIA-tools): acquiring the unwrapped interferograms standard products
+- [ISCE2 framework, JPL](https://github.com/isce-framework/isce2): SAR, and InSAR processing app.
+	- To process a few interferograms, use `topsApp.py` or `alos2App.py`
+	- To process a huge stack of interferograms, use the [stack processor](https://github.com/isce-framework/isce2/tree/main/contrib/stack): [topsStack](https://github.com/isce-framework/isce2/tree/main/contrib/stack/topsStack "topsStack"), [stripmapStack](https://github.com/isce-framework/isce2/tree/main/contrib/stack/stripmapStack "stripmapStack"), [alosStack](https://github.com/isce-framework/isce2/tree/main/contrib/stack/alosStack "alosStack")
+
++ [ARIA, JPL](https://aria.jpl.nasa.gov/products/): overview, product explanations
+
++ [ARIA-tools]( https://github.com/aria-tools/ARIA-tools): downloading the JPL-processed unwrapped interferograms standard products
 
 + [ARIA-tools documentations](https://github.com/aria-tools/ARIA-tools-docs): tutorials
 
-+ [MintPy](https://github.com/insarlab/MintPy): time-series analysis
++ [MintPy](https://github.com/insarlab/MintPy): InSAR time-series analysis
 
 + [MintPy documentations](https://mintpy.readthedocs.io/en/latest/) : tutorials
-
-+ [UNAVCO Short course material, 2020](https://github.com/isce-framework/isce2-docs): InSAR Processing and Time-Series Analysis for Geophysical Applications: InSAR Scientific Computing Environment (ISCE), ARIA Tools, and MintPy
 
 + [ATBD](https://github.com/nisar-solid/ATBD)
 

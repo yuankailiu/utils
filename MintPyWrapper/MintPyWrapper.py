@@ -52,11 +52,20 @@ def cmdLineParse():
     epilog = EXAMPLE
     parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter,  epilog=epilog)
 
-    parser.add_argument('param_file', type=str, help = 'TEXT file with custom specifications')
+    parser.add_argument('param_file', type=str,
+            help = 'TEXT file with custom specifications')
     parser.add_argument('-d', '--home', dest='proc_home', type=str, default='.',
             help = 'mintpy processing home directory')
     parser.add_argument('-a', '--action', dest='action', type=str, default='all',
-            help = 'Allow either `all` or `dem_resamp`')
+            help = 'Choose either `all` or `dem_resamp`')
+    parser.add_argument('--dem-out', dest='dem_out', type=str, default=None,
+            help = '[dem_resamp] Name of the output resampled DEM file')
+    parser.add_argument('--geo-in', dest='geo_in', type=str, default=None,
+            help = '[dem_resamp] Name of input geometry file for area bbox')
+    parser.add_argument('--dem-orig', dest='dem_orig', type=str, default=None,
+            help = '[dem_resamp] Name of input original DEM file')
+    parser.add_argument('--dem-action', dest='dem_action', type=str, default='run',
+            help = '[dem_resamp] run or write')
 
     if len(sys.argv) <= 1:
         print('')
@@ -221,7 +230,7 @@ class SBApp:
         self.f.write(cmd+'\n')
 
 
-    def run_resamp_dem(self, action='run'):
+    def run_resamp_dem(self, dem_out, geo_file, dem_orig, action='run'):
         """
         Use GDAL to resample the orignal DEM to match the full extent of the isce2 interferograms.
         The extent, dimension, and resolution of the output DEM is the same as the interferograms.
@@ -231,19 +240,17 @@ class SBApp:
         The output DEM is then saved separetly (inputs/srtm.dem)
         The output DEM is mainly for plotting purposes using view.py
         """
-        dem_out   = os.path.join(self.indir, 'srtm.dem')
-        geo_file  = os.path.join(self.indir, 'geometryGeo.h5')
-        dem_orig  = self.pDict['path.demOrig']
+        if dem_out is None:
+            dem_out   = os.path.join(self.indir, 'srtm.dem')
+        if geo_file is None:
+            geo_file  = os.path.join(self.indir, 'geometryGeo.h5')
+        if dem_orig is None:
+            dem_orig  = self.pDict['path.demOrig']
 
         # Read basic attributes from .h5
-        atr = readfile.read(geo_file, datasetName='height')[1]
+        atr = readfile.read_attribute(geo_file)
 
         # compute latitude and longitude min max
-        #lon_min = float(atr['X_FIRST']) - float(atr['X_STEP'])
-        #lon_max = float(atr['X_FIRST']) + float(atr['X_STEP']) * (int(atr['WIDTH'])+1)
-        #lat_max = float(atr['Y_FIRST']) - float(atr['Y_STEP'])
-        #lat_min = float(atr['Y_FIRST']) + float(atr['Y_STEP']) * (int(atr['LENGTH'])+1)
-
         lon_min = float(atr['X_FIRST']) + float(atr['X_STEP'])/2
         lon_max = float(atr['X_FIRST']) + float(atr['X_STEP'])/2 + float(atr['X_STEP']) * (int(atr['WIDTH']))
         lat_max = float(atr['Y_FIRST']) - float(atr['X_STEP'])/2
@@ -989,8 +996,8 @@ if __name__ == '__main__':
     if inps.action == 'all':
         main(proc, inps)
     elif inps.action == 'dem_resamp':
-        proc.f = open('run_0_prep', 'a') # append after the runfile
-        proc.run_resamp_dem(action='run')
+        proc.f = open('run_0_prep', 'a+') # append after the runfile
+        proc.run_resamp_dem(inps.dem_out, inps.geo_in, inps.dem_orig, inps.dem_action)
         proc.f.close()
 
     print('Finish writing the run files. Go ahead and run them sequentially.')

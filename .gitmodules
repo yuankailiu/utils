@@ -1,0 +1,6 @@
+[submodule "sardem"]
+	path = sardem
+	url = https://github.com/yunjunz/sardem.git
+[submodule "SSARA"]
+	path = SSARA
+	url = https://gitlab.com/yunjunz/SSARA.git

@@ -284,11 +284,23 @@ https://github.com/yunjunz/conda-envs?tab=readme-ov-file#2-install-isce-2-and-mi
 
 This will install all the prerequisites and `isce2` and `mintpy` to your `insar` env.
 
+IMPORTANT PATH SETTINGS!!! (for conda-installed `isce2`)
+```bash
+# in your bash_profile, add this line if not already exist
+if [ -z ${PYTHONPATH+x} ]; then export PYTHONPATH=""; fi
+
+# for isce2 env paths
+alias load_insar='mamba activate insar; export PATH=${PATH}:${ISCE_HOME}/bin:${ISCE_HOME}/applications; export PYTHONPATH=$CONDA_PREFIX/packages:${PYTHONPATH}'
+
+```
+
 Now, every time we want to use those software, we will just SSH to kamb, and activate the env.
 
 ```bash
 # warm up conda environment
-mamba activate insar
+load_insar
+
+# equivalent to doing `mamba activate insar` and set all the above paths manually
 
 # Run the following to test the installation:
 topsApp.py -h            # test ISCE-2

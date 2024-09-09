@@ -89,8 +89,12 @@ Things that will be covered here:
 
 To access the Kamb server, you'll need to use SSH each time with the command: `ssh username@kamb.gps.caltech.edu`. 
 The `username` is your GPS division username, the one you got from Scott. You'll be prompted to enter your password.
-Typing more means more labor. Let's avoid that. Check out this [guidance](https://www.thegeekstuff.com/2008/11/3-steps-to-perform-ssh-login-without-password-using-ssh-keygen-ssh-copy-id/) (Step1 to Step3 will do it).
 
+#### SSH key authentication
+SSH key authentication will help us to waive password entering. Check out this [guidance](https://www.thegeekstuff.com/2008/11/3-steps-to-perform-ssh-login-without-password-using-ssh-keygen-ssh-copy-id/) (Step1 to Step3 will do it).
+If there is a two-factor authentication for your system, SSH key authentication bypasses the password+2fa code. So setting this up is very convenient.
+
+#### SSH aliases
 After setting the above, we don't need to type a password. But we still need to type our username and the full IP address when doing SSH, i.e., `ssh username@kamb.gps.caltech.edu`
 
 To further save your energy, we can create alias names for SSH on your local computer. Do the following on **your own laptop**:
@@ -284,13 +288,18 @@ https://github.com/yunjunz/conda-envs?tab=readme-ov-file#2-install-isce-2-and-mi
 
 This will install all the prerequisites and `isce2` and `mintpy` to your `insar` env.
 
-IMPORTANT PATH SETTINGS!!! (for conda-installed `isce2`)
+**IMPORTANT PATH SETTINGS!!!** (for `isce2`)
+
+You will need to do it manually for both `$PATH$` and `$PYTHONPATH$`.
+
+1. If you install via [**Option2**](https://github.com/yunjunz/conda-envs?tab=readme-ov-file#option-2-install-isce2-conda-version-and-mintpy-development-version), then step c there will source the `config.rc` and set the paths.
+2. If you install via [**Option1**](https://github.com/yunjunz/conda-envs?tab=readme-ov-file#option-1-install-isce2-conda-version-and-mintpy-conda-version), then you need to add the following manually in your system source file (.bash_profile or .bashrc)
 ```bash
-# in your bash_profile, add this line if not already exist
+# in your .bash_profile or .bashrc, add this line if it does not already exist
 if [ -z ${PYTHONPATH+x} ]; then export PYTHONPATH=""; fi
 
-# for isce2 env paths
-alias load_insar='mamba activate insar; export PATH=${PATH}:${ISCE_HOME}/bin:${ISCE_HOME}/applications; export PYTHONPATH=$CONDA_PREFIX/packages:${PYTHONPATH}'
+# for isce2 env paths (must activate env first to get $ISCE_HOME and $CONDA_PREFIX)
+alias load_insar='mamba activate insar; export PATH=${PATH}:${ISCE_HOME}/bin:${ISCE_HOME}/applications; export PYTHONPATH=${CONDA_PREFIX}/packages:${PYTHONPATH}'
 
 ```
 
@@ -316,16 +325,51 @@ mamba deactivate
 
 ## 5. How to run Jupyter Notebook on Kamb?
 
-We all know how to run Jupyter on our own laptop. How about on a remote server like `kamb`?
+```bash
+# activate your env
+mamba activate insar
 
-The basic idea: [online reference here](https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook/).
+# install jupyter notebook, jupyterlab, ipykernal
+mamba install -c conda-forge notebook jupyterlab ipykernel
 
-One way to use Jupyter Notebook on Kamb is to [forward a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer but gets the data through the tunnel from the server. With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
+# install this insar env in the jupyter ecosystem (so you can use this env on jupyter)
+python -m ipykernel install --user --name=insar
+
+```
+
+To run a notebook or a jupyterLab session on your laptop:
+```bash
+# run the notebook, minimalism of jupyterLab
+jupyter notebook
+
+# run jupyterLab
+jupyter lab
+```
+
+But how about run jupyter on a remote server like on `kamb`?
+```bash
+# go to a remote server
+ssh kamb
+
+# run jupyer: almost the same, but you will not show the browser on the remote server; you will forward that to a port
+jupyter lab --no-browser --port=1236
+
+# now go to your local terminal (your laptop), tunnel that remote port to a local port
+ssh -N -f -L 8080:localhost:1236 <REMOTE_USER>@<REMOTE_HOST>
+
+# both local and remote --port numbers are arbitrary, choose as long as nobody is using it
+```
+
+REFERENCE:
+- **The basic idea: [online reference here](https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook/).**
+
+- **Guide: https://github.com/yunjunz/conda-envs/blob/main/docs/jupyter.md**
+
+WHY WE DO THIS:
+Using Jupyter Notebook on Kamb by [forwarding a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer but gets the data through the tunnel from the server. With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
 
 This Jupyter instance will only run as long as you have your SSH connection and shell open. If you want to keep Jupyter running even while you're logged out, you can open a **[Linux screen instance](https://linuxize.com/post/how-to-use-linux-screen/)**, and run the Jupyter command in there (that's what I do). Simply detach the `screen` and it'll stay running in the background. The next time you SSH into the machine, just open that same link as before, and your Jupyter process will be ready where you left it off.
 
-**Guide: https://github.com/yunjunz/conda-envs/blob/main/docs/jupyter.md**
-  
 
 <br />
 

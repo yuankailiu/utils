@@ -14,6 +14,10 @@ which builds the entire structure of directories and notebooks that we’ve been
 
 ## **Specific github repository**
 
+### Paul Rosen're repo
+
+https://github.com/parosen/Geo-SInC/tree/main
+
 ### isce-docs repo:
 
 [isce-framework/isce2-docs](https://github.com/isce-framework/isce2-docs/tree/master/Notebooks/UNAVCO_2020)

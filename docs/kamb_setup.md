@@ -7,6 +7,7 @@ A large portion of Geophysics is about computing stuff. The amount of computatio
 Here are some things to get started on. Feel free to quickly skim or skip some. The idea is to know some vocabulary.
 
 ### Account:
+
 1. Make sure you’ve sent Scott Dugan your Caltech email address. Read his instructions in his reply.
 	- In Mark's group, available machines are: `kamb`, `hokkaido`, `kyushu`, `shikoku`, `honshu`
 2. [Request a Caltech VPN](https://www.imss.caltech.edu/services/wired-wireless-remote-access/Virtual-Private-Network-VPN/vpn-apps-students) (helpful when you work off-campus)
@@ -20,9 +21,10 @@ Here are some things to get started on. Feel free to quickly skim or skip some. 
 ### Programming IDEs
 Different people have varying preferences when it comes to IDEs. While some people might not use them at all (always do `SSH` and `vim`), others may rely on several for different tasks. Here are a few popular ones for Python users:
 - **Jupyter Notebook:** Great for interactive code-writing at early stages, data visualization, and going through tutorials that were written as Notebooks. Even writing your homework. [Learn more about Jupyter Notebook](https://realpython.com/jupyter-notebook-introduction/).
-    
+  
 - **Visual Studio Code (VS Code):** A versatile and widely-used editor that supports numerous programming languages and extensions. It's known for its rich feature set and customizability.
-    
+  
+
 Feel free to explore more (`Spyder`, `pycharm`).
 
 # Setting up your home
@@ -256,7 +258,7 @@ We will use `git` to get the source codes of `ARIA-tools` (getting the InSAR unw
 [git](https://git-scm.com/) is an open source [version control system](https://www.atlassian.com/git/tutorials/what-is-version-control). You can find some very basic tutorials online if you are bored. Otherwise, we will only use the very basic stuff of `git` (e.g. how to download source codes of a open source software). The things explained in this document about `git` will be enough for us now. Feel free to register a GitHub account.
 
 You might already have `git` installed on Kamb. If not, simply install it in the `base` conda env
-   
+
 ```bash
 # Go to Kamb
 ssh kamb

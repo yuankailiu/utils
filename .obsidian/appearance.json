@@ -1,8 +1,8 @@
 {
   "theme": "moonstone",
   "translucency": false,
-  "cssTheme": "Shimmering Focus",
-  "baseFontSize": 16,
+  "cssTheme": "Notation 2",
+  "baseFontSize": 18,
   "enabledCssSnippets": [
     "obsidian",
     "big-math"

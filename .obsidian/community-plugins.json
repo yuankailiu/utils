@@ -4,5 +4,6 @@
   "obsidian-export-to-tex",
   "obsidian-pandoc-reference-list",
   "obsidian-pandoc",
-  "obsidian-zotero-desktop-connector"
+  "obsidian-zotero-desktop-connector",
+  "obsidian-hider"
 ]

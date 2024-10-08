@@ -69,7 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 415.5110321044922
+    "width": 336.5024719238281
   },
   "right": {
     "id": "dead1c792541795e",
@@ -139,14 +139,6 @@
                 "showSearch": false,
                 "searchQuery": ""
               }
-            }
-          },
-          {
-            "id": "71873e3e3cfcd399",
-            "type": "leaf",
-            "state": {
-              "type": "ReferenceListView",
-              "state": {}
             }
           }
         ],

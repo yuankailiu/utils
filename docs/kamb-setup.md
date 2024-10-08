@@ -21,9 +21,9 @@ Here are some things to get started on. Feel free to quickly skim or skip some. 
 ### Programming IDEs
 Different people have varying preferences when it comes to IDEs. While some people might not use them at all (always do `SSH` and `vim`), others may rely on several for different tasks. Here are a few popular ones for Python users:
 - **Jupyter Notebook:** Great for interactive code-writing at early stages, data visualization, and going through tutorials that were written as Notebooks. Even writing your homework. [Learn more about Jupyter Notebook](https://realpython.com/jupyter-notebook-introduction/).
-  
+
 - **Visual Studio Code (VS Code):** A versatile and widely-used editor that supports numerous programming languages and extensions. It's known for its rich feature set and customizability.
-  
+
 
 Feel free to explore more (`Spyder`, `pycharm`).
 
@@ -41,7 +41,7 @@ Things that will be covered here:
 - Setup to run Jupyter Notebooks on Kamb
   - Jupyter Notebook provides a Matlab-like interface to run Python code and display results and plots.
   - For interferograms and time-series analysis, there are several useful notebooks for the tutorials of `ARIA-tools` and `MintPy` available provided by the developers.
-- Installation of `ARIA-tools` and `MintPy` 
+- Installation of `ARIA-tools` and `MintPy`
 
 ## Know the machines
 
@@ -72,7 +72,7 @@ Things that will be covered here:
 #   Storage servers
 ########################
 
-# /net/kraken/nobak        
+# /net/kraken/nobak
 # You can store 20TB in the 'nobak'; NOT backed up
 
 # /net/kraken/bak
@@ -89,7 +89,7 @@ Things that will be covered here:
 
 ## 0. An easier way of SSH (optional, but good for laziness)
 
-To access the Kamb server, you'll need to use SSH each time with the command: `ssh username@kamb.gps.caltech.edu`. 
+To access the Kamb server, you'll need to use SSH each time with the command: `ssh username@kamb.gps.caltech.edu`.
 The `username` is your GPS division username, the one you got from Scott. You'll be prompted to enter your password.
 
 #### SSH key authentication
@@ -131,7 +131,7 @@ Host earth
     ServerAliveCountMax 120
     ForwardX11Timeout = 24h
 
-# Other servers: you can do the same thing on Hokkaido, Honshu, Kyushu, Shikoku, 
+# Other servers: you can do the same thing on Hokkaido, Honshu, Kyushu, Shikoku,
 # Host name_of_server
 #    Hostname name_of_server.gps.caltech.edu
 #    User your_user_name
@@ -195,7 +195,7 @@ ln -s /marmot-nobak/my_name ~/marmot-nobak
 
 ## 2. Install Conda on Kamb
 
-During your career path here, you will do seismology, GPS, InSAR, forward/inverse modeling, machine learning, etc. You will use many different codes, and packages that require quite different computer prerequisites and environments. [That is why we need conda to manage all these nerdy stuff](https://www.freecodecamp.org/news/why-you-need-python-environments-and-how-to-manage-them-with-conda-85f155f4353c/). 
+During your career path here, you will do seismology, GPS, InSAR, forward/inverse modeling, machine learning, etc. You will use many different codes, and packages that require quite different computer prerequisites and environments. [That is why we need conda to manage all these nerdy stuff](https://www.freecodecamp.org/news/why-you-need-python-environments-and-how-to-manage-them-with-conda-85f155f4353c/).
 
 ```bash
 # Go to kamb (a lazy way now)
@@ -214,12 +214,12 @@ bash Miniforge3-Linux-x86_64.sh -b -p ~/tools/miniforge
 # initialize it
 ~/tools/miniforge/bin/mamba init bash
 
-# Close and restart the shell for changes to take effect. 
+# Close and restart the shell for changes to take effect.
 exit                         # logout
 ssh kamb                     # login again; you will see on your command line prompt: (base) username@kamb
 
 
-# set conda-forge as the default conda channels 
+# set conda-forge as the default conda channel
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
@@ -228,7 +228,7 @@ mamba install wget git tree numpy --yes
 pip install bypy
 
 
-# Now you can make your new conda env and install stuff under 
+# Now you can make your new conda env and install stuff under
 mamba create --name your_new_env       # create a env
 mamba activate your_new_env            # activate this env
 mamba install some_packages_you_want   # install new stuff
@@ -368,7 +368,7 @@ REFERENCE:
 - **Guide: https://github.com/yunjunz/conda-envs/blob/main/docs/jupyter.md**
 
 WHY WE DO THIS:
-Using Jupyter Notebook on Kamb by [forwarding a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer but gets the data through the tunnel from the server. With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server. 
+Using Jupyter Notebook on Kamb by [forwarding a webpage port](https://linuxize.com/post/how-to-setup-ssh-tunneling/#local-port-forwarding) (independently of X11), such that the browser is local to your computer but gets the data through the tunnel from the server. With SSH to KAMB, we can have Jupyter Notebooks open locally (on a laptop browser), while all the computations is done on the remote server.
 
 This Jupyter instance will only run as long as you have your SSH connection and shell open. If you want to keep Jupyter running even while you're logged out, you can open a **[Linux screen instance](https://linuxize.com/post/how-to-use-linux-screen/)**, and run the Jupyter command in there (that's what I do). Simply detach the `screen` and it'll stay running in the background. The next time you SSH into the machine, just open that same link as before, and your Jupyter process will be ready where you left it off.
 
@@ -490,7 +490,7 @@ Yunjun, Z., Fattahi, H., and Amelung, F. (2019), Small baseline InSAR time serie
 The information/guidance provided in this document is not original. It is a condensed version from some of the following sources. Please refer to the corresponding links to learn more about the details.
 
 ### Online course
-- [UNAVCO InSAR courses](https://www.unavco.org/education/professional-development/short-courses/course-materials/insar/insar.html) 
+- [UNAVCO InSAR courses](https://www.unavco.org/education/professional-development/short-courses/course-materials/insar/insar.html)
 + [UNAVCO Short course material, 2020](https://github.com/isce-framework/isce2-docs): InSAR Processing and Time-Series Analysis for Geophysical Applications: InSAR Scientific Computing Environment (ISCE), ARIA Tools, and MintPy
 
 ### InSAR software & installation procedures

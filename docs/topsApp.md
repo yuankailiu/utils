@@ -1,4 +1,35 @@
-# topsApp example files:
+# topsApp
+
+## 1. modify xmls in `example/`
+
+
+## 2. create pair directories
+```
+# relatvie path, so execute this line in the example/ folder
+s1_pairs.py -d ../../data/ -x reference.xml
+
+# then move the created folders and log to the parent dir
+mv 20*-20* pair_log* ../
+```
+
+## 3. Modify `run_job_series.sh`
++ Add the pair number there
++ `export CUDA_VISIBLE_DEVICES=xx` (xx can be 0-7 on Kamb)
++ `export OMP_NUM_THREADS=yy` (yy can be 4, 8, 16, etc.)
+
+
+
+## Build a stack.vrt for all files
+```bash
+
+ls ./merged/SLC/*/*.full > full_slc.txt
+
+gdalbuildvrt -input_file_list full_slc.txt -separate full_slc.vrt
+
+```
+
+
+### topsApp example files:
 
 ```bash
 #### merged/

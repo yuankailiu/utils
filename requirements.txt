@@ -1,5 +1,47 @@
-# sar
+# git
+pre-commit
+
+# DAAC
 asf_search
+
+# PyCuAmpcor compiler
+pybind11
+
+# ICAMS
+pykrige
+
+# csi (https://www.geologie.ens.fr/~jolivet/csi/installation.html)
+#python3      # you may have it already
+#gcc          # to compile okada4py, but can use system default, export CC=/usr/bin/gcc
+#numpy        # you may have it already
+scipy
+shapely
+pyproj
+matplotlib
+cartopy
+multiprocess
+h5py
+
+#okada4py     # (on GitHub: https://github.com/jolivetr/okada4py)
+              #     mamba activate your_env
+              #     git clone git@github.com:lijun99/okada4py.git
+              #     git checkout setup
+              #     export CC=gcc (use system /usr/bin/gcc)
+              #     python setup.py build (build and compile)
+              #     pip install --no-cache-dir . (don't do python setup.py install --user)
+              #     pip show okada4py
+              #     cd test/ && python test.py
+
+#pyrocko      # (on GitHub: https://git.pyrocko.org/pyrocko/pyrocko.git)
+              # check: https://pyrocko.org/docs/current/install/packages/anaconda.html
+
+# jupyter (enable conda env on jupyter app)
+ipykernel     # Run python -m ipykernel install --user --name=<myenv>
+
+# plotting
+cmocean
+cmcrameri
+
 
 # others
 tqdm

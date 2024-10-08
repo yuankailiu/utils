@@ -432,7 +432,7 @@ class SBApp:
         cmd  = f"view.py {file} {dataset} -c {cmap} "
         cmd += f"--dem {dem_file} --alpha {alpha} "
         cmd += f"--dem-nocontour --shade-exag {shade_exag} --shade-min {shade_min} --shade-max {shade_max} "
-        cmd += f"--mask {mask_file} --unit {unit} --ref-lalo {self.refla} {self.reflo} "
+        cmd += f"--mask {mask_file} --zm --unit {unit} --ref-lalo {self.refla} {self.reflo} "
         if (vmin is not None) and (vmin != 'none'): cmd += f'--vlim {vmin} {vmax} '
         if (xmin is not None) and (xmin != 'none'): cmd += f'--sub-lon {xmin} {xmax} '
         if (ymin is not None) and (ymin != 'none'): cmd += f'--sub-lat {ymin} {ymax} '

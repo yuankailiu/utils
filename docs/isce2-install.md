@@ -70,16 +70,57 @@ Participate in discussions with the users/developers community!
     nvcc --version  # check version
     ```
 
-    Make sure you loaded the system default compilers (before we did not get any compilers from conda/mamba).
+    Make sure you loaded the system default compilers (older versions are good)
+    (new versions from conda/mamba may cause you issues)
     ```bash
     CC=/usr/bin/gcc; CXX=/usr/bin/g++; FC=/usr/bin/gfortran
-
-    # you can put this in your .bashrc
+    
+    # you can put below in your .bashrc
     export CC=/usr/bin/gcc; export CXX=/usr/bin/g++; export FC=/usr/bin/gfortran
     ```
 
-    Now, [install isce2 source code](https://github.com/yunjunz/conda-envs/blob/main/isce2/README.md#c-install-isce-2-to-isce2install_-folder) to `isce2/install_*` folder.
+    Now, [install isce2 source code](https://github.com/yunjunz/conda-envs/blob/main/isce2/README.md#c-install-isce-2-to-isce2install_-folder) to `isce2/install_*` folder. Basically, do the following:
 
+```bash
+cd ~/apps/isce2/src/isce2   # go to the isce2 src folder (from git clone)
+git checkout your_desired_branch
+cd ~/apps/isce2             # go to the parent isce2 folder
+mkdir install build
+cd build
+
+# before re-run, delete existing contents in build folder
+# more notes on https://github.com/lijun99/isce2-install
+
+# ======== GPU Architecture ========
+## What is SM (Streaming Multiprocessor) Version?
+# The SM (Streaming Multiprocessor) version indicates the GPU architecture targeted by CUDA. It allows developers to compile CUDA code optimized for specific NVIDIA GPU families.
+#| SM Version | Architecture | Example GPUs                         |
+#|------------|--------------|--------------------------------------|
+#| `sm_60`    | Pascal       | GTX 1080, Titan X (Pascal), P100     |
+#| `sm_70`    | Volta        | Tesla V100                           |
+#| `sm_75`    | Turing       | RTX 2080, T4                         |
+#| `sm_80`    | Ampere       | A100, RTX 30xx series                |
+#| `sm_89`    | Hopper       | H100                                 |
+
+# check your machine's GPS arch (on Kamb we have Teala V100, thus -arch=sm_70)
+lspci | grep -i nvidia
+
+# (option 1) when install on Kamb - NVDIA V100
+cmake ~/apps/isce2/src/isce2 -DCMAKE_INSTALL_PREFIX=~/apps/isce2/install${ISCE_VERSION} -DCMAKE_CUDA_FLAGS="-arch=sm_70" -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} -DCMAKE_BUILD_TYPE=Release
+# or on japan machines without any gpus/cuda
+cmake ~/apps/isce2/src/isce2 -DCMAKE_INSTALL_PREFIX=~/apps/isce2/install${ISCE_VERSION} -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} -DCMAKE_BUILD_TYPE=Release 
+
+# (option 2) when install on HPC - NVIDIA P100
+cmake ~/tools/isce2/src/isce2 -DCMAKE_INSTALL_PREFIX=~/tools/isce2/install${ISCE_VERSION} -DCMAKE_CUDA_FLAGS="-arch=sm_60" -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} -DCMAKE_BUILD_TYPE=Release
+
+
+# compile and install
+# then under the ~/apps/isce2/install${ISCE_VERSION}, there should be `bin` and `packages` folder
+# add `make VERBOSE=1` to see details if run into errors.
+make -j 16 # use multiple threads to accelerate
+make install
+
+```
 
 4. [Activate your mamba env and do the config setup in your `.bashrc`](https://github.com/yunjunz/conda-envs/blob/main/isce2/README.md#d-setup). So every time you login, it will be ready.
 

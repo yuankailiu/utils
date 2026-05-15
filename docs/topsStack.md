@@ -173,14 +173,25 @@ wget --content-disposition --continue --user={USERNAME} --password={PASSWORD} "h
 
 ## Orbits
 ### 1. pre-download all available orbits from ESA
+- `wget` the Sentinel-1 precise orbits from ASF archive
 ```
-## wget the Sentinel-1 precise orbits from ASF archive
+# create a dir for hording the orbit files
+mkdir -p ~/kraken-nobak/z_common_data/orbits/aux_poeorb
+cd ~/kraken-nobak/z_common_data/orbits/aux_poeorb
+
+# run wget, takes a few minutes to download from scratch 
+# (by running again next time, will skipped the downloaded files. Nice!)
 wget -r -l inf --no-remove-listing -nc --include aux_poeorb --execute robots=off --no-host-directories --cut-dirs=1 --reject="index.html*" --continue https://s1qc.asf.alaska.edu/aux_poeorb/
+
 # -r,  --recursive
 # -l,  --level=NUMBER       maximum recursion depth (inf or 0 for infinite).
 ```
 
-### 2. isce2 stack processor `fetchOrbit.py`
+### 2. [Sentinel EOF](https://github.com/scottstanie/sentineleof)
+
+https://github.com/scottstanie/sentineleof
+
+### 3. isce2 stack processor `fetchOrbit.py`
 ```
 fetchOrbit.py -d path/to/your/zipfiles/
 

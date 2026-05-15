@@ -1,11 +1,11 @@
 {
-  "theme": "moonstone",
+  "theme": "system",
   "translucency": false,
-  "cssTheme": "Notation 2",
+  "cssTheme": "Obsidian Nord",
   "baseFontSize": 18,
   "enabledCssSnippets": [
     "obsidian",
     "big-math"
   ],
-  "accentColor": "#1fbd00"
+  "accentColor": ""
 }

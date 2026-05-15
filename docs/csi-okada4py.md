@@ -52,3 +52,17 @@ python3 -c "import okada4py"  # run import test
 
 python3 test.py    # run the test script
 ```
+
+## New installation
+
+```
+# okada4py     # (on GitHub: https://github.com/jolivetr/okada4py)
+               #     mamba activate your_env
+               #     git clone git@github.com:lijun99/okada4py.git
+               #     git checkout setup
+               #     export CC=gcc (use system /usr/bin/gcc)
+               #     python setup.py build (build and compile)
+               #     pip install --no-cache-dir . (don't do python setup.py install --user)
+               #     pip show okada4py
+               #     cd test/ && python test.py
+```

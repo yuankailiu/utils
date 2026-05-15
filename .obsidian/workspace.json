@@ -4,19 +4,21 @@
     "type": "split",
     "children": [
       {
-        "id": "333e853834fede05",
+        "id": "91e1ae34c9d82a49",
         "type": "tabs",
         "children": [
           {
-            "id": "5aabe7b1df4212bf",
+            "id": "ffeee1f71b20773d",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/kamb_setup.md",
+                "file": "docs/isce2-install.md",
                 "mode": "source",
                 "source": false
-              }
+              },
+              "icon": "lucide-file",
+              "title": "isce2-install"
             }
           }
         ]
@@ -38,8 +40,11 @@
             "state": {
               "type": "file-explorer",
               "state": {
-                "sortOrder": "alphabetical"
-              }
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
             }
           },
           {
@@ -48,13 +53,15 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "antarti",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical"
-              }
+              },
+              "icon": "lucide-search",
+              "title": "Search"
             }
           },
           {
@@ -62,14 +69,16 @@
             "type": "leaf",
             "state": {
               "type": "bookmarks",
-              "state": {}
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
             }
           }
         ]
       }
     ],
     "direction": "horizontal",
-    "width": 336.5024719238281
+    "width": 209.5110321044922
   },
   "right": {
     "id": "dead1c792541795e",
@@ -85,7 +94,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "docs/kamb_setup.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -93,7 +101,9 @@
                 "searchQuery": "",
                 "backlinkCollapsed": false,
                 "unlinkedCollapsed": true
-              }
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
             }
           },
           {
@@ -102,10 +112,11 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "docs/kamb_setup.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
-              }
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
             }
           },
           {
@@ -115,8 +126,12 @@
               "type": "tag",
               "state": {
                 "sortOrder": "frequency",
-                "useHierarchy": true
-              }
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
             }
           },
           {
@@ -125,8 +140,12 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "docs/kamb_setup.md"
-              }
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
             }
           },
           {
@@ -138,7 +157,9 @@
                 "sortOrder": "frequency",
                 "showSearch": false,
                 "searchQuery": ""
-              }
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
             }
           }
         ],
@@ -151,6 +172,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:Create new base": false,
       "switcher:Open quick switcher": false,
       "graph:Open graph view": false,
       "canvas:Create new canvas": false,
@@ -159,49 +181,48 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "5aabe7b1df4212bf",
+  "active": "ffeee1f71b20773d",
   "lastOpenFiles": [
+    "docs/HPC-isce2.md",
+    "docs/kamb-setup.md",
+    "docs/isce2-install.md",
+    "s1_tools/README.md",
+    "notebooks/screw_dislocation.py",
+    "notebooks/phase_group_velo.ipynb",
+    "notebooks/phase_avg.ipynb",
+    "notebooks/EQ_phenomonology.ipynb",
+    "notebooks/mintpy_runfile.ipynb",
+    "notebooks/fourier_trans.ipynb",
+    "notebooks/eulerUnitTest.ipynb",
+    "notebooks/euler_pole.ipynb",
+    "docs/topsStack.md",
+    "docs/csi-okada4py.md",
+    "README.md",
+    "docs/topsApp.md",
+    "run_topsApp/README.md",
+    "sardem/README.md",
+    "Untitled.canvas",
+    "Untitled.md",
+    "docs/common_issue.md",
+    "docs/compilers_issue.md",
+    "docs/HPC-intro.md",
     "sdungan@caltech.edu.md",
     "docs/kamb_setup.md",
     "sardem",
     "docs/intro.md",
     "docs/useful_repos.md",
-    "docs/HPC-isce2.md",
-    "Untitled.canvas",
     "docs/snaphu.md",
-    "docs/topsApp.md",
-    "README.md",
-    "run_topsApp/README.md",
     "MintPyWrapper/README.md",
     "sarut/README.md",
     "docs/notes/README.md",
     "docs/SettingKambKraken.md",
     "shell/untar_batchREMA.sh",
-    "shell/transferFile.sh",
-    "shell/rc/bashrc_kamb",
-    "shell/rc/bashrc_arius",
-    "shell/rc/bashrc",
-    "shell/rc/bash_profile",
-    "shell/rc",
-    "shell/edit_stackConfig.sh",
-    "shell/bin/update_vscode.sh",
     "junk/tmp/SET_PSD_short.png",
     "junk/tmp/SET_PSD_long.png",
     "junk/tmp/SET_PSD.png",
     "junk/tmp/Figure.png",
     "Jean-Plilip 277.md",
     "02.coding/basics/latex.md",
-    "().md",
-    "01.projects/Ideas.md",
-    "01.projects/Aqaba_interseismic/README.md",
-    "01.projects/seismolab.md",
-    "02.coding/basics/jupyter_setup.md",
-    "02.coding/basics/bash_tips.md",
-    "04.lectures/ge167_tectonicGeodesy.md",
-    "02.coding/basics/bash_env_setup.md",
-    "02.coding/basics/conda_env_setup.md",
-    "02.coding/insar-related/HPC-isce2.md",
-    "03.readings/Paper_reviews/Guo_EPSL_2024.md",
     "01.projects/Aqaba_interseismic/closurePhase.canvas",
     "01.projects/Aqaba_interseismic/attachments/Pasted image 20231101092359.png",
     "01.projects/Aqaba_interseismic/attachments/Pasted image 20231230210007.png",

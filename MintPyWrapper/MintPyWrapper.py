@@ -36,6 +36,16 @@ Changes 2026-09 (see CLAUDE.md of the Chile project for the reasons):
   * run_x_bwAnalysis no longer generated
   * run_1: check_ref_closure.py (reference pixel on an isolated unwrapping patch?)
   * run_9: explicit view.py lines (MintPy figures minus ifgramStack); full --plot left commented
+
+Changes 2026-10 (chile andean-crust/UNWRAP_A018_FULLSPAN.md):
+  * run_1b_reunwrap (wrapper.reunwrap = whirlwind | snaphu | no; default whirlwind): ERA5 delay from the
+    stack dates, ERA5-aided re-unwrap with tropo_unwrap.py (isce-proc), inputs/ifgramStack.h5 replaced by
+    the re-unwrapped stack (original kept as inputs/ifgramStack_orig.h5), network rules + REF re-applied.
+    Needs mintpy.load.intFile (wrapPhase) in the stack.
+  * run_2: clean_network.py drops pairs whose mean triplet integer non-closure exceeds wrapper.cleanThr
+    (default 0.1; no = skip), keeping the network connected; then invert_network.
+  * recommended mintpy.networkInversion.weightFunc = no (var gains nothing on a cleaned network and is
+    ~1.4x slower; with geocoded stacks NCORRLOOKS = 0.6 makes var near-uniform anyway). Warned if not set.
 """
 
 import argparse
@@ -94,6 +104,9 @@ WRAPPER_DEFAULTS = {
     'wrapper.nprocs'          : 8,              # processes for load_stack.py
     'wrapper.plateName'       : None,           # ITRF14 plate name for plate_motion.py, e.g. SouthAmerica
     'wrapper.ts2velo'         : None,           # extra options for timeseries2velocity.py
+    'wrapper.reunwrap'        : 'whirlwind',    # GAM-aided re-unwrap (tropo_unwrap.py): whirlwind / snaphu / no
+    'wrapper.reunwrapNlooks'  : 20,             # effective looks of the coherence for the re-unwrap
+    'wrapper.cleanThr'        : 0.1,            # clean_network.py: drop pairs with mean triplet non-closure > thr; no = skip
     'wrapper.bandwidth'       : 3,              # closure phase bias: bandwidth (Zheng et al. 2022)
     'wrapper.connLevel'       : 10,             # closure phase bias: connection level assumed unbiased
     'wrapper.wbdOrig'         : None,           # input water body
@@ -305,6 +318,46 @@ class SBApp:
         self.f.write(f'remove_ramp.py {fname} -d {dset} -s {ramp_type} -m {mask_file} --save-ramp-coeff --update\n\n')
         self.f.write(f'\\mv {fdir}/rampCoeff_{fbase}.txt {fdir}/rampCoeff_{fbase}_{dset}.txt\n\n')
 
+    def write_reunwrap(self):
+        """ERA5-aided re-unwrapping (tropo_unwrap.py of isce-proc): ERA5 delay from the stack dates, remove it
+        from the wrapped phase, unwrap (whirlwind or snaphu), add it back. The re-unwrapped stack replaces
+        inputs/ifgramStack.h5; the original (with wrapPhase) is kept as inputs/ifgramStack_orig.h5 and is the
+        input of any re-run. Per-pair results in inputs/reunwrap/ (resumable)."""
+        method = self.pDict['wrapper.reunwrap']; nl = self.pDict['wrapper.reunwrapNlooks']
+        ind, era = self.indir, os.path.join(self.indir, f'{self.gam}.h5')
+        orig, unw = os.path.join(ind, 'ifgramStack_orig.h5'), os.path.join(ind, f'ifgramStack_{self.gam}unw.h5')
+        wdir = _none(self.iDict.get('mintpy.troposphericDelay.weatherDir', 'auto'))
+        w = f'-w {wdir} ' if wdir else ''
+        f = self.f
+        f.write(f'## ERA5-aided re-unwrapping ({method}, nlooks {nl}); original stack kept as {orig}\n')
+        f.write(f'IN={self.ifg_stack}; [ -f {orig} ] && IN={orig}\n')
+        f.write(f"python -c \"import h5py,sys; sys.exit(0 if 'wrapPhase' in h5py.File('$IN','r') else 1)\" || "
+                f"{{ echo 'no wrapPhase in '$IN': set mintpy.load.intFile and reload (run_0)'; exit 1; }}\n\n")
+        f.write(f'# {self.gam} delay of every acquisition of the stack (no time series needed); kept for run_4\n')
+        f.write(f'if [ ! -f {era} ]; then\n')
+        f.write(f"  DATES=$(python -c \"from mintpy.objects import ifgramStack as S; s=S('$IN'); s.open(print_msg=False); "
+                f"print(' '.join(s.get_date_list(dropIfgram=False)))\")\n")
+        f.write(f"  HOUR=$(python -c \"from mintpy.utils import readfile; from mintpy.tropo_pyaps3 import closest_weather_model_hour as c; "
+                f"print(c(readfile.read_attribute('$IN')['CENTER_LINE_UTC']))\")\n")
+        f.write(f'  tropo_pyaps3.py -d $DATES --hour $HOUR -m {self.gam} -g {self.geom_file} --tropo-file {era} {w}\n')
+        f.write('fi\n\n')
+        f.write(f'tropo_unwrap.py -g {era} -f $IN -a --mask {self.water_mask} --unwrapper {method} --nlooks {nl} '
+                f'--nproc {self.numWorker} -o {os.path.join(ind, "reunwrap")} --outfile {unw}\n')
+        f.write(f'[ -f {orig} ] || \\mv {self.ifg_stack} {orig}\n')
+        f.write(f'\\mv {unw} {self.ifg_stack}\n\n')
+        f.write('# network rules and reference point on the re-unwrapped stack\n')
+        self.write_smallbaselineApp(dostep='modify_network')
+        self.write_smallbaselineApp(dostep='reference_point')
+        f.write(f"{os.path.join(WRAPPER_DIR, 'check_ref_closure.py')} {self.ifg_stack} --suggest 60\n\n")
+
+    def write_clean_network(self):
+        """Drop pairs breaking triplet closure (clean_network.py -h); idempotent."""
+        thr = self.pDict['wrapper.cleanThr']
+        self.f.write(f'## drop pairs with mean triplet integer non-closure > {thr} (network kept connected)\n')
+        self.f.write(f"{os.path.join(WRAPPER_DIR, 'clean_network.py')} {self.ifg_stack} --thr {thr} "
+                     f"--water-mask {self.water_mask} --outdir {self.home}\n")
+        self.write_plot_network(stacks=['ifgramStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
+
     def write_modify_network(self, file='ifgramStack.h5'):
         self.f.write(f'modify_network.py {os.path.join(self.indir, file)} -t {self.template}\n\n')
 
@@ -474,9 +527,31 @@ def main(proc, inps):
     proc.write_plot_network(stacks=['ifgramStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
     proc.f.close()
 
+    ########## ERA5-aided re-unwrapping (2026-10) ##############
+    reunwrap = _none(P['wrapper.reunwrap'])
+    if reunwrap in (None, 'no'):
+        print('wrapper.reunwrap = no: run_1b_reunwrap not written')
+    elif _none(proc.iDict.get('mintpy.load.intFile', 'auto')) is None:
+        print(' ! wrapper.reunwrap = {} needs the wrapped phase: set mintpy.load.intFile '
+              '(e.g. ../hpc_topsStack/merged/interferograms/*_*/filt_fine.int) and re-run run_0; '
+              'run_1b_reunwrap not written'.format(reunwrap))
+    elif proc.gam != 'ERA5':
+        print(f' ! wrapper.reunwrap supports ERA5 only (weatherModel = {proc.gam}); run_1b_reunwrap not written')
+    else:
+        if reunwrap not in ('whirlwind', 'snaphu'):
+            sys.exit(f'wrapper.reunwrap = {reunwrap}: use whirlwind, snaphu or no')
+        proc.create_run_file('run_1b_reunwrap')
+        proc.write_reunwrap()
+        proc.f.close()
+
     ################### Network inversion ##################
     # maskTempCoh.h5 is written by invert_network with mintpy.networkInversion.minTempCoh
+    wf = proc.iDict.get('mintpy.networkInversion.weightFunc', 'auto')
+    if wf != 'no':
+        print(f' ! mintpy.networkInversion.weightFunc = {wf}; recommended: no (see the 2026-10 notes above)')
     proc.create_run_file('run_2_inversion')
+    if _none(P['wrapper.cleanThr']) not in (None, 'no'):
+        proc.write_clean_network()
     proc.write_smallbaselineApp(dostep='correct_unwrap_error')
     proc.write_smallbaselineApp(dostep='invert_network')
     proc.f.close()

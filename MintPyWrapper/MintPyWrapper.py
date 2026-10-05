@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 ############################################################
 # This code is a recipe for MintPy  (Yunjun et al., 2019)  #
-# Author: Yuan-Kai Liu, 2022                               #
+# Author: Yuan-Kai Liu, 2022; refactored 2026-09           #
 ############################################################
 """ Generates mintpy cmd run files for each stage and to run in bash
 REFERENCE:
@@ -17,6 +17,35 @@ REFERENCE:
     4. Stephenson, O. L., Liu, Y.-K., Yunjun, Z., Simons, M., Rosen, P., & Xu, X. (2022).
         The Impact of Plate Motions on Long-Wavelength InSAR-Derived Velocity Fields.
         Geophysical Research Letters, 49(21), e2022GL099835. https://doi.org/10.1029/2022GL099835
+
+Input: ONE custom MintPy template (e.g. ChileSenAT076.cfg) holding both the
+mintpy.* options and the wrapper.* options below. A legacy `*.par` file is still
+accepted (its keys are mapped to wrapper.*; its mintpy.template gives the cfg).
+
+Re-run `MintPyWrapper.py <cfg>` after every edit of the cfg: the run files embed
+reference point, time functions etc. at generation time.
+
+Changes 2026-09 (see CLAUDE.md of the Chile project for the reasons):
+  * --ref-date: `$(cat reference_date.txt)` when mintpy.reference.date = auto
+  * ionBurstRamp / IonTotal branch removed (< 0.1 mm; its dem_error overwrote
+    timeseriesResidual.h5 of the Ion branch)
+  * date check before each `diff.py --force` (warns about skipped dates)
+  * plate-motion model computed once; velocities corrected with diff.py
+  * one temporal-coherence mask: MintPy's maskTempCoh.h5 (mintpy.networkInversion.minTempCoh)
+  * wrapper.loader = geo: load_stack.py loads straight to geocoded inputs
+  * run_x_bwAnalysis no longer generated
+  * run_1: check_ref_closure.py (reference pixel on an isolated unwrapping patch?)
+  * run_9: explicit view.py lines (MintPy figures minus ifgramStack); full --plot left commented
+
+Changes 2026-10 (chile andean-crust/UNWRAP_A018_FULLSPAN.md):
+  * run_1b_reunwrap (wrapper.reunwrap = whirlwind | snaphu | no; default whirlwind): ERA5 delay from the
+    stack dates, ERA5-aided re-unwrap with tropo_unwrap.py (isce-proc), inputs/ifgramStack.h5 replaced by
+    the re-unwrapped stack (original kept as inputs/ifgramStack_orig.h5), network rules + REF re-applied.
+    Needs mintpy.load.intFile (wrapPhase) in the stack.
+  * run_2: clean_network.py drops pairs whose mean triplet integer non-closure exceeds wrapper.cleanThr
+    (default 0.1; no = skip), keeping the network connected; then invert_network.
+  * recommended mintpy.networkInversion.weightFunc = no (var gains nothing on a cleaned network and is
+    ~1.4x slower; with geocoded stacks NCORRLOOKS = 0.6 makes var near-uniform anyway). Warned if not set.
 """
 
 import argparse
@@ -26,65 +55,150 @@ import shutil
 import sys
 from types import SimpleNamespace
 
-# isce
-import isce
-# mintpy
-import mintpy
 import numpy as np
-from applications.gdal2isce_xml import gdal2isce_xml
-from isceobj.Alos2Proc.Alos2ProcPublic import waterBodyRadar
 from mintpy.utils import readfile
 
 FILE_NAME = os.path.basename(__file__)
+WRAPPER_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 #############################################################################################################
 def cmdLineParse():
-    """
-    Command line parsers
-    """
     description = 'Generates mintpy command line run files for each stage and to run in bash'
-
-    EXAMPLE = f"""Examples:
-        ## Specify the `*.par` and the process home directory under `mintpy/`.
-        {FILE_NAME} AqabaSenAT087.par
+    epilog = f"""Examples:
+        {FILE_NAME} ChileSenAT076.cfg              # write run_0 ... run_8, run_all
+        {FILE_NAME} ChileSenAT076.cfg -a dem_resamp
+        {FILE_NAME} --check-dates timeseries_SET_ERA5.h5 inputs/ion.h5
     """
-    epilog = EXAMPLE
-    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter,  epilog=epilog)
-
-    parser.add_argument('param_file', type=str,
-            help = 'TEXT file with custom specifications')
+    parser = argparse.ArgumentParser(description=description, formatter_class=argparse.RawTextHelpFormatter, epilog=epilog)
+    parser.add_argument('param_file', type=str, nargs='?',
+            help='custom MintPy template (*.cfg) with wrapper.* keys, or a legacy *.par')
     parser.add_argument('-d', '--home', dest='proc_home', type=str, default='.',
-            help = 'mintpy processing home directory')
+            help='mintpy processing home directory')
     parser.add_argument('-a', '--action', dest='action', type=str, default='all',
-            help = 'Choose either `all` or `dem_resamp`')
+            help='Choose either `all` or `dem_resamp`')
     parser.add_argument('--dem-out', dest='dem_out', type=str, default=None,
-            help = '[dem_resamp] Name of the output resampled DEM file')
+            help='[dem_resamp] Name of the output resampled DEM file')
     parser.add_argument('--geo-in', dest='geo_in', type=str, default=None,
-            help = '[dem_resamp] Name of input geometry file for area bbox')
+            help='[dem_resamp] Name of input geometry file for area bbox')
     parser.add_argument('--dem-orig', dest='dem_orig', type=str, default=None,
-            help = '[dem_resamp] Name of input original DEM file')
+            help='[dem_resamp] Name of input original DEM file')
     parser.add_argument('--dem-action', dest='dem_action', type=str, default='run',
-            help = '[dem_resamp] run or write')
+            help='[dem_resamp] run or write')
+    parser.add_argument('--icams', dest='icams', action='store_true', default=False,
+            help='[Tropo] Switch on to run ICAMS (Cao et al. 2021) for tropospheric correction')
+    parser.add_argument('--check-dates', dest='check_dates', nargs=2, metavar=('TS', 'CORR'),
+            help='warn about dates of TS missing in CORR (they are skipped by diff.py --force)')
 
     if len(sys.argv) <= 1:
-        print('')
         parser.print_help()
         sys.exit(1)
-    else:
-        print('')
-        return parser.parse_args()
+    return parser.parse_args()
+
 
 #############################################################################################################
-## class that calls the MintPy cli
+## parameters: wrapper.* keys in the cfg (defaults), and the legacy .par key mapping
+#############################################################################################################
+WRAPPER_DEFAULTS = {
+    'wrapper.loader'          : 'geo',          # geo: load_stack.py (direct geocoded); mintpy: load_data + geocode.py
+    'wrapper.nprocs'          : 8,              # processes for load_stack.py
+    'wrapper.plateName'       : None,           # ITRF14 plate name for plate_motion.py, e.g. SouthAmerica
+    'wrapper.ts2velo'         : None,           # extra options for timeseries2velocity.py
+    'wrapper.reunwrap'        : 'whirlwind',    # GAM-aided re-unwrap (tropo_unwrap.py): whirlwind / snaphu / no
+    'wrapper.reunwrapNlooks'  : 20,             # effective looks of the coherence for the re-unwrap
+    'wrapper.cleanThr'        : 0.1,            # clean_network.py: drop pairs with mean triplet non-closure > thr; no = skip
+    'wrapper.bandwidth'       : 3,              # closure phase bias: bandwidth (Zheng et al. 2022)
+    'wrapper.connLevel'       : 10,             # closure phase bias: connection level assumed unbiased
+    'wrapper.wbdOrig'         : None,           # input water body
+    'wrapper.demOrig'         : None,           # input DEM (for inputs/srtm.dem, plotting)
+    'wrapper.velocityDir'     : './velocity_out/',
+    'wrapper.picDir'          : './pic_supp/',
+    'wrapper.customMask'      : 'maskPoly.h5',
+    'wrapper.plot.shadeExag'  : 0.02,
+    'wrapper.plot.shadeMin'   : -6000,
+    'wrapper.plot.shadeMax'   : 4000,
+    'wrapper.plot.velocityAlpha': 0.6,
+    'wrapper.plot.velocityCmap' : 'RdYlBu_r',
+    'wrapper.plot.velocityMsk'  : 'coh',        # water / coh / connComp / custom / no
+    'wrapper.plot.veloUnit'     : 'mm',
+    'wrapper.plot.dpi'          : 300,
+    'wrapper.plot.lonMin'       : None,
+    'wrapper.plot.lonMax'       : None,
+    'wrapper.plot.latMin'       : None,
+    'wrapper.plot.latMax'       : None,
+    'wrapper.plot.vm_big'       : '-8,8',
+    'wrapper.plot.vm_mid'       : '-5,5',
+    'wrapper.plot.vm_sma'       : '-0.2,0.2',
+    'wrapper.plot.vm_STD'       : '0,1.0',
+    'wrapper.plot.vm_AMP'       : '0,16',
+    'wrapper.plot.vm_SET'       : '-0.2,0.2',
+    'wrapper.plot.vm_GAM'       : '-2,2',
+}
+
+LEGACY_PAR_KEYS = {   # old .par key -> wrapper key
+    'mintpy.plateName'   : 'wrapper.plateName',
+    'mintpy.ts2velo'     : 'wrapper.ts2velo',
+    'mintpy.bandwidth'   : 'wrapper.bandwidth',
+    'mintpy.connLevel'   : 'wrapper.connLevel',
+    'path.wbdOrig'       : 'wrapper.wbdOrig',
+    'path.demOrig'       : 'wrapper.demOrig',
+    'path.velocityDir'   : 'wrapper.velocityDir',
+    'path.extraPicDir'   : 'wrapper.picDir',
+    'path.customMask'    : 'wrapper.customMask',
+}
+
+
+def _none(v):
+    return None if v in (None, 'none', 'None', 'auto', '') else v
+
+
+def read_params(param_file, home='.'):
+    """Return (cfg_path, pDict with wrapper.* keys, iDict = full template)."""
+    raw = readfile.read_template(param_file)
+    if param_file.endswith('.par'):                         # legacy
+        cfg = glob.glob(os.path.join(home, raw.get('mintpy.template', 'smallbaselineApp.cfg')))[0]
+        pDict = {}
+        for k, v in raw.items():
+            if k in LEGACY_PAR_KEYS:
+                pDict[LEGACY_PAR_KEYS[k]] = v
+            elif k.startswith('plot.'):
+                pDict['wrapper.' + k] = v
+        if 'wrapper.plateName' not in pDict and raw.get('mintpy.itrfPlate'):
+            pDict['wrapper.plateName'] = raw['mintpy.itrfPlate'].split()[-1]
+        pDict.setdefault('wrapper.loader', 'mintpy')        # legacy tracks keep the old loader
+        print(f'legacy parameter file {param_file} -> template {cfg}')
+    else:
+        cfg = param_file
+        pDict = {k: v for k, v in raw.items() if k.startswith('wrapper.')}
+    for k, v in WRAPPER_DEFAULTS.items():
+        pDict.setdefault(k, v)
+    unknown = [k for k in pDict if k not in WRAPPER_DEFAULTS]
+    for k in unknown:
+        print(f' ! unrecognized wrapper parameter: {k} (ignored)')
+    iDict = readfile.read_template(cfg)
+    return cfg, pDict, iDict
+
+
+def check_dates(ts_file, corr_file):
+    """Print a warning for dates of ts_file absent in corr_file (diff.py --force skips them)."""
+    from mintpy.utils import readfile as rf
+    d1 = rf.get_slice_list(ts_file); d2 = set(rf.get_slice_list(corr_file))
+    d1 = [d.split('-')[-1] for d in d1]; d2 = {d.split('-')[-1] for d in d2}
+    miss = [d for d in d1 if d not in d2]
+    if miss:
+        print(f'WARNING: {len(miss)} of {len(d1)} dates of {ts_file} are missing in {corr_file}; '
+              f'diff.py --force leaves them UNCORRECTED: {" ".join(miss)}')
+    else:
+        print(f'date check OK: all {len(d1)} dates of {ts_file} are in {corr_file}')
+
+
+#############################################################################################################
+## class that writes the MintPy command lines
 #############################################################################################################
 
 class SBApp:
 
     def __init__(self, param_file, proc_home='.'):
-        """Initializing the SmallBaselineApp object in MintPy (Yunjun et al. 2019)
-        """
-        # set default file paths
         self.param_file = os.path.expanduser(param_file)
         self.home       = os.path.expanduser(proc_home)
         self.cwd        = os.getcwd()
@@ -95,909 +209,487 @@ class SBApp:
         self.indir      = os.path.join(self.home,  'inputs')
         self.geom_file  = os.path.join(self.indir, 'geometryGeo.h5')
         self.ifg_stack  = os.path.join(self.indir, 'ifgramStack.h5')
-        self.ion_stack  = os.path.join(self.indir, 'ionStack.h5')
-
-        # print locations
         print(f'Current path: {self.cwd}')
-        print(f'Reading MintPy custom paramters at: {self.param_file}')
+        print(f'Reading parameters from: {self.param_file}')
         print(f'MintPy processing directory at: {self.home}')
-
-        # read and check the parameter file
-        self.pDict = check_parameter_txt(self.param_file)
-
+        self.template, self.pDict, self.iDict = read_params(self.param_file, self.home)
 
     def create_run_file(self, file):
+        self.run_files = getattr(self, 'run_files', []) + [file]
         self.f = open(file, 'w')
         self.f.write('#!/bin/bash\n\n')
-        return
-
 
     def get_template(self):
-        """ Define the template and save a copy
-        """
-        self.template    = self.pDict.get('mintpy.template'   , 'smallbaselineApp.cfg')
-        self.template    = glob.glob(os.path.join(self.home, self.template))[0]
-
-        print(f'Use template for regular     pairs: {self.template}')
-        #print('Update smallbaselineApp.cfg based on {}'.format(self.template))
-        #shutil.copyfile(self.template, os.path.join(self.indir, 'smallbaselineApp.cfg'))
-
-        for outdir in [self.indir, self.picdir]:
-            if not os.path.exists(outdir):
-                os.makedirs(outdir)
-            for cfg in [self.template]:
-                print(f'copy {cfg} to {outdir}/{os.path.basename(cfg)}')
-                shutil.copyfile(cfg, f'{outdir}/{os.path.basename(cfg)}')
-
-        self.iDict     = readfile.read_template(self.template)
-        self.ram       = self.iDict['mintpy.compute.maxMemory']
-        self.cluster   = self.iDict['mintpy.compute.cluster']
-        self.numWorker = self.iDict['mintpy.compute.numWorker']
-        m_poly         = self.iDict['mintpy.timeFunc.polynomial']
-        m_peri         = self.iDict['mintpy.timeFunc.periodic'].replace(',', ' ')
+        print(f'Use template: {self.template}')
+        for outdir in [self.indir, self.picdir]:        # backup copy of the cfg used for these run files
+            os.makedirs(outdir, exist_ok=True)
+            shutil.copyfile(self.template, os.path.join(outdir, os.path.basename(self.template)))
+            print(f'copy {self.template} to {outdir}/')
+        iD = self.iDict
+        self.ram       = iD['mintpy.compute.maxMemory']
+        self.cluster   = iD['mintpy.compute.cluster']
+        self.numWorker = iD['mintpy.compute.numWorker']
+        m_poly         = iD['mintpy.timeFunc.polynomial']
+        m_peri         = iD['mintpy.timeFunc.periodic'].replace(',', ' ')
         self.time_func = f'--poly-order {m_poly} --periodic {m_peri}'
-        self.refla     = self.iDict['mintpy.reference.lalo'].split(',')[0]
-        self.reflo     = self.iDict['mintpy.reference.lalo'].split(',')[1]
-        self.ref_date  = self.iDict['mintpy.reference.date']
-        self.gam       = self.iDict['mintpy.troposphericDelay.weatherModel']  #[ERA5 / MERRA / NARR], auto for ERA5
+        self.refla, self.reflo = (x.strip() for x in iD['mintpy.reference.lalo'].split(','))
+        rd = iD.get('mintpy.reference.date', 'auto')
+        # auto / reference_date.txt -> read at RUN time (written by residual_RMS)
+        self.ref_date = '$(cat reference_date.txt)' if rd in ('auto', 'reference_date.txt', 'no') else rd
+        self.gam = iD.get('mintpy.troposphericDelay.weatherModel', 'auto')
         if self.gam == 'auto':
             self.gam = 'ERA5'
+        self.plateName = _none(self.pDict['wrapper.plateName'])
+        self.itrffile  = os.path.join(self.indir, f'ITRF14_{self.plateName}.h5') if self.plateName else None
+        self.veldir    = self.pDict['wrapper.velocityDir']
+        self.extrapic  = self.pDict['wrapper.picDir']
 
-
-    def run_resampWbd(self, geom_basedir=None, wbdFile=None, ftype='Body'):
-        """ Make a water body file with the SAR dimension
-        """
-        # get paths, filenames
+    def run_resampWbd(self, ftype='Body'):
+        """ Make a water body file with the SAR dimension (needs ISCE) """
         os.chdir(self.home)
-        isce_geom_file = self.iDict['mintpy.load.demFile']
-        geom_basedir   = os.path.dirname(os.path.abspath(isce_geom_file))
-        wbdFile        = os.path.abspath(self.pDict['path.wbdOrig'])
-        wbdOutFile     = os.path.join(geom_basedir, f'water{ftype}.rdr')
+        geom_basedir = os.path.dirname(os.path.abspath(self.iDict['mintpy.load.demFile']))
+        wbdOutFile   = os.path.join(geom_basedir, f'water{ftype}.rdr')
         os.chdir(self.cwd)
-
         if os.path.exists(wbdOutFile):
-            print(f'water file exists: {wbdOutFile}')
-            print('skip generating water file')
-        else:
-            print('water file does not exist')
-            print(f'Working on resmapling water file from: {geom_basedir}')
-            # do gdal_translate to re-generate lon.rdr.xml lat.rdr.xml
-            latFile = f'{geom_basedir}/lat.rdr'
-            lonFile = f'{geom_basedir}/lon.rdr'
-            print('Generate ISCE xml file from gdal supported file')
-            gdal2isce_xml(latFile+'.vrt')
-            gdal2isce_xml(lonFile+'.vrt')
-            print('Completed ISCE xml files')
-
-            # resample the water file
-            waterBodyRadar(latFile, lonFile, wbdFile, wbdOutFile)
-            print(f'Resampled water file: {wbdOutFile}')
+            print(f'water file exists: {wbdOutFile}; skip generating it')
+            return
+        import isce  # noqa: F401
+        from applications.gdal2isce_xml import gdal2isce_xml
+        from isceobj.Alos2Proc.Alos2ProcPublic import waterBodyRadar
+        wbdFile = os.path.abspath(self.pDict['wrapper.wbdOrig'])
+        latFile, lonFile = f'{geom_basedir}/lat.rdr', f'{geom_basedir}/lon.rdr'
+        gdal2isce_xml(latFile + '.vrt'); gdal2isce_xml(lonFile + '.vrt')
+        waterBodyRadar(latFile, lonFile, wbdFile, wbdOutFile)
+        print(f'Resampled water file: {wbdOutFile}')
         os.system(f'fixImageXml.py -i {wbdOutFile} -f ')
 
-
+    # ------------------------------------------------------------------ writers
     def write_smallbaselineApp(self, dostep=None, start=None, end=None):
-        """ Write command line: `smallbaselineApp.py`
-        """
         cmd = f'smallbaselineApp.py {self.template} '
-        if dostep:
-            cmd += f'--dostep {dostep} '
-        if start:
-            cmd += f'--start {start} '
-        if end:
-            cmd += f'--end {end} '
-        self.f.write(cmd+'\n\n')
+        if dostep: cmd += f'--dostep {dostep} '
+        if start:  cmd += f'--start {start} '
+        if end:    cmd += f'--end {end} '
+        self.f.write(cmd + '\n\n')
 
-
-    def write_loaddata(self, project=None, datasets='-l ifg geom ion'):
-        """ Write command line: `load_data.py`
-        """
-        cmd = f'load_data.py -t smallbaselineApp.cfg '
-        if project:
-            cmd += f'--project {project} '
-        if datasets:
-            cmd += datasets
-        self.f.write(cmd+'\n\n')
-
+    def write_load_stack(self):
+        """ Direct geocoded loading (no radar-coordinate stack is written) """
+        self.f.write(f"{os.path.join(WRAPPER_DIR, 'load_stack.py')} {self.template} "
+                     f"--outdir {self.indir} --nprocs {self.pDict['wrapper.nprocs']}\n\n")
 
     def write_radar2geo_inputs(self, lalo=None):
-        """ Write command line: `geocode.py` to geocode ifgramStack.h5, ionStack.h5, geometryRadar.h5
-        """
+        """ Legacy loader: geocode ifgramStack.h5, ion.h5, geometryRadar.h5 and keep radar copies """
         geom_rdr = os.path.join(self.indir, 'geometryRadar.h5')
         rdr_dir  = os.path.join(self.indir, 'radar')
-
-        if lalo is None: lalo = [float(n) for n in self.iDict['mintpy.geocode.laloStep'].replace(',', ' ').split()]
-
-        # get the hdf5 files to be geocoded
-        file_list = ['geometryRadar.h5', 'ifgramStack.h5', 'ion.h5', 'ionBurstRamp.h5']
-        files = []
-        for f in file_list:
-            files.append(os.path.join(self.indir, f))
-
-        # command line
-        cmd = f"geocode.py {' '.join(map(str,files))} -l {geom_rdr} --lalo {' '.join(map(str,lalo))} --ram {self.ram} --update\n\n"
-
-        # backup the radar coord files
+        if lalo is None:
+            lalo = [float(n) for n in self.iDict['mintpy.geocode.laloStep'].replace(',', ' ').split()]
+        file_list = ['geometryRadar.h5', 'ifgramStack.h5', 'ion.h5']
+        files = [os.path.join(self.indir, f) for f in file_list]
+        lalo9 = [f'{x:.9f}' for x in lalo]
+        cmd  = f"geocode.py {' '.join(files)} -l {geom_rdr} --lalo {' '.join(lalo9)} --ram {self.ram} --update\n\n"
         cmd += f'mkdir -p {rdr_dir}\n'
-        cmd += f"mv {' '.join(map(str,files))} {rdr_dir}\n"
-
-        # rename the geo files and store in inputs/
+        cmd += f"\\mv {' '.join(files)} {rdr_dir}\n"
         for file in file_list:
-            if file.startswith('geometry'):
-                cmd += f'mv geo_{file} {self.indir}/geometryGeo.h5 \n'
-            else:
-                cmd += f'mv geo_{file} {self.indir}/{file} \n'
-
-        self.f.write(cmd+'\n')
-
+            dst = 'geometryGeo.h5' if file.startswith('geometry') else file
+            cmd += f'\\mv geo_{file} {self.indir}/{dst} \n'
+        self.f.write(cmd + '\n')
 
     def run_resamp_dem(self, dem_out, geo_file, dem_orig, action='run'):
-        """
-        Use GDAL to resample the orignal DEM to match the full extent of the isce2 interferograms.
-        The extent, dimension, and resolution of the output DEM is the same as the interferograms.
-        This is totally optional. After geocode geometryRadar.h5 to geometryGeo.h5, the height
-        will have large holes; not pretty.
-        Should be run after having the geometryGeo.h5 file (must be in geo-coord to allow reading lon lat)
-        The output DEM is then saved separetly (inputs/srtm.dem)
-        The output DEM is mainly for plotting purposes using view.py
-        """
-        if dem_out is None:
-            dem_out   = os.path.join(self.indir, 'srtm.dem')
-        if geo_file is None:
-            geo_file  = os.path.join(self.indir, 'geometryGeo.h5')
-        if dem_orig is None:
-            dem_orig  = self.pDict['path.demOrig']
-
-        # Read basic attributes from .h5
+        """ Resample the original DEM to the geocoded grid (inputs/srtm.dem, for plotting) """
+        dem_out  = dem_out  or os.path.join(self.indir, 'srtm.dem')
+        geo_file = geo_file or os.path.join(self.indir, 'geometryGeo.h5')
+        dem_orig = dem_orig or self.pDict['wrapper.demOrig']
         atr = readfile.read_attribute(geo_file)
-
-        # compute latitude and longitude min max
-        lon_min = float(atr['X_FIRST']) + float(atr['X_STEP'])/2
-        lon_max = float(atr['X_FIRST']) + float(atr['X_STEP'])/2 + float(atr['X_STEP']) * (int(atr['WIDTH']))
-        lat_max = float(atr['Y_FIRST']) - float(atr['X_STEP'])/2
-        lat_min = float(atr['Y_FIRST']) - float(atr['X_STEP'])/2 + float(atr['Y_STEP']) * (int(atr['LENGTH']))
-
-        # do gdalwarp on the orignal DEM and output it
-        cmd  = f"gdalwarp {dem_orig} {dem_out} -te {lon_min} {lat_min} {lon_max} {lat_max} "
-        cmd += f"-ts {atr['WIDTH']} {atr['LENGTH']} -of ISCE\n"
+        x0, dx, y0, dy = (float(atr[k]) for k in ('X_FIRST', 'X_STEP', 'Y_FIRST', 'Y_STEP'))
+        W, L = int(atr['WIDTH']), int(atr['LENGTH'])
+        lon_min, lon_max = x0 + dx / 2, x0 + dx / 2 + dx * W
+        lat_max = y0 - dx / 2
+        lat_min = y0 - dx / 2 + dy * L
+        cmd  = f"gdalwarp {dem_orig} {dem_out} -te {lon_min} {lat_min} {lon_max} {lat_max} -ts {W} {L} -of ISCE\n"
         cmd += f'fixImageXml.py -i {dem_out} -f\n\n'
         if action == 'write':
             self.f.write(cmd)
-        elif action == 'run':
-            print('Do resample DEM file...')
-            print('  Dimension of the dataset (length, width): {}, {}'.format(atr['LENGTH'], atr['WIDTH']))
-            print(f'  S N W E: {lat_min} {lat_max} {lon_min} {lon_max}')
-            print(cmd)
-            os.system(cmd)
+        else:
+            print(cmd); os.system(cmd)
 
-
-    def write_deramp_ifg(self, fname='ifgramStack.h5', dset='unwrapPhase', ramp_type='linear', mask_file='maskTempCoh.h5', coeff_file=None):
-        """Deramp the interferograms for easier identifying unwrapping errors in plots
-        """
+    def write_deramp_ifg(self, fname='ifgramStack.h5', dset='unwrapPhase', ramp_type='linear', mask_file='maskTempCoh.h5'):
         fname = os.path.join(self.indir, fname)
-
-        # file/dir
         fdir = os.path.dirname(fname)
-        fbase, fext = os.path.splitext(os.path.basename(fname))
-        coeff_file_default = os.path.join(fdir, f'rampCoeff_{fbase}.txt')
-        coeff_file = os.path.join(fdir, f'rampCoeff_{fbase}_{dset}.txt')
-
+        fbase = os.path.splitext(os.path.basename(fname))[0]
         self.f.write(f'remove_ramp.py {fname} -d {dset} -s {ramp_type} -m {mask_file} --save-ramp-coeff --update\n\n')
-        self.f.write(f'mv {coeff_file_default} {coeff_file}\n\n')
+        self.f.write(f'\\mv {fdir}/rampCoeff_{fbase}.txt {fdir}/rampCoeff_{fbase}_{dset}.txt\n\n')
 
+    def write_reunwrap(self):
+        """ERA5-aided re-unwrapping (tropo_unwrap.py of isce-proc): ERA5 delay from the stack dates, remove it
+        from the wrapped phase, unwrap (whirlwind or snaphu), add it back. The re-unwrapped stack replaces
+        inputs/ifgramStack.h5; the original (with wrapPhase) is kept as inputs/ifgramStack_orig.h5 and is the
+        input of any re-run. Per-pair results in inputs/reunwrap/ (resumable)."""
+        method = self.pDict['wrapper.reunwrap']; nl = self.pDict['wrapper.reunwrapNlooks']
+        ind, era = self.indir, os.path.join(self.indir, f'{self.gam}.h5')
+        orig, unw = os.path.join(ind, 'ifgramStack_orig.h5'), os.path.join(ind, f'ifgramStack_{self.gam}unw.h5')
+        wdir = _none(self.iDict.get('mintpy.troposphericDelay.weatherDir', 'auto'))
+        w = f'-w {wdir} ' if wdir else ''
+        f = self.f
+        f.write(f'## ERA5-aided re-unwrapping ({method}, nlooks {nl}); original stack kept as {orig}\n')
+        f.write(f'IN={self.ifg_stack}; [ -f {orig} ] && IN={orig}\n')
+        f.write(f"python -c \"import h5py,sys; sys.exit(0 if 'wrapPhase' in h5py.File('$IN','r') else 1)\" || "
+                f"{{ echo 'no wrapPhase in '$IN': set mintpy.load.intFile and reload (run_0)'; exit 1; }}\n\n")
+        f.write(f'# {self.gam} delay of every acquisition of the stack (no time series needed); kept for run_4\n')
+        f.write(f'if [ ! -f {era} ]; then\n')
+        f.write(f"  DATES=$(python -c \"from mintpy.objects import ifgramStack as S; s=S('$IN'); s.open(print_msg=False); "
+                f"print(' '.join(s.get_date_list(dropIfgram=False)))\")\n")
+        f.write(f"  HOUR=$(python -c \"from mintpy.utils import readfile; from mintpy.tropo_pyaps3 import closest_weather_model_hour as c; "
+                f"print(c(readfile.read_attribute('$IN')['CENTER_LINE_UTC']))\")\n")
+        f.write(f'  tropo_pyaps3.py -d $DATES --hour $HOUR -m {self.gam} -g {self.geom_file} --tropo-file {era} {w}\n')
+        f.write('fi\n\n')
+        f.write(f'tropo_unwrap.py -g {era} -f $IN -a --mask {self.water_mask} --unwrapper {method} --nlooks {nl} '
+                f'--nproc {self.numWorker} -o {os.path.join(ind, "reunwrap")} --outfile {unw}\n')
+        f.write(f'[ -f {orig} ] || \\mv {self.ifg_stack} {orig}\n')
+        f.write(f'\\mv {unw} {self.ifg_stack}\n\n')
+        f.write('# network rules and reference point on the re-unwrapped stack\n')
+        self.write_smallbaselineApp(dostep='modify_network')
+        self.write_smallbaselineApp(dostep='reference_point')
+        f.write(f"{os.path.join(WRAPPER_DIR, 'check_ref_closure.py')} {self.ifg_stack} --suggest 60\n\n")
 
-    def run_inversion_misfit(self, stack_file, dset, ts_file, mask_file='maskTempCoh.h5', eval_at='pair'):
-        """Compute the misfit of interferograms inversion, misfit = timeseires - ifg_stack
-            Can evaluate at 1) each pair 2) each epoch
-        """
-        stack_file = os.path.join(self.indir, stack_file)
-
-
+    def write_clean_network(self):
+        """Drop pairs breaking triplet closure (clean_network.py -h); idempotent."""
+        thr = self.pDict['wrapper.cleanThr']
+        self.f.write(f'## drop pairs with mean triplet integer non-closure > {thr} (network kept connected)\n')
+        self.f.write(f"{os.path.join(WRAPPER_DIR, 'clean_network.py')} {self.ifg_stack} --thr {thr} "
+                     f"--water-mask {self.water_mask} --outdir {self.home}\n")
+        self.write_plot_network(stacks=['ifgramStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
 
     def write_modify_network(self, file='ifgramStack.h5'):
-        """ Write command line: `modify_network.py`
-        """
-        template = self.template
-        self.f.write(f'modify_network.py {os.path.join(self.indir, file)} -t {template}\n\n')
+        self.f.write(f'modify_network.py {os.path.join(self.indir, file)} -t {self.template}\n\n')
 
-
-    def write_reference_point(self, files=[], ref_lalo=None, ref_yx=None):
+    def write_reference_point(self, files=(), ref_lalo=None, ref_yx=None):
+        opt = ''
         if ref_lalo:
             opt = f'--lat {ref_lalo[0]} --lon {ref_lalo[1]}'
-        if ref_yx:
+        elif ref_yx:
             opt = f'--row {ref_yx[0]} --col {ref_yx[1]}'
-        else:
-            opt = ''
         for file in files:
             self.f.write(f'reference_point.py {file} -t {self.template} {opt}\n')
         self.f.write('\n')
 
-
-    def write_plot_network(self, stacks, cmap_vlist=[0.2, 0.7, 1.0], arg=''):
+    def write_plot_network(self, stacks, cmap_vlist=(0.2, 0.7, 1.0), arg=''):
         for file in stacks:
             cmd  = f'plot_network.py {os.path.join(self.indir, file)} -t {self.template} '
-            cmd += f"--nodisplay --cmap-vlist {' '.join(map(str,cmap_vlist))} {arg}\n"
-            cmd += f"mkdir -p {self.pDict['path.extraPicDir']}\n"
-            cmd += f"mv *.pdf *.png {self.pDict['path.extraPicDir']}\n\n"
+            cmd += f"--nodisplay --cmap-vlist {' '.join(map(str, cmap_vlist))} {arg}\n"
+            cmd += f'mkdir -p {self.extrapic}\n'
+            cmd += f'\\mv *.pdf *.png {self.extrapic}\n\n'
             self.f.write(cmd)
 
-
-    def write_ifgram_inversion(self, stack, mask, weight='var'):
-        cmd  = f'ifgram_inversion.py {os.path.join(self.indir, stack)} -m {mask} -w {weight} '
-        cmd += f'--cluster {self.cluster} --num-worker {self.numWorker} --ram {self.ram} --update\n\n'
-        self.f.write(cmd)
-
-
-    def write_generate_mask(self, threshold=None, ctype='temporal'):
-        if not threshold:
-            threshold = self.pDict.get('mintpy.tempCohThreshold', 0.90)
-        if ctype == 'temporal':
-            cohfile       = os.path.join(self.home, 'temporalCoherence.h5')
-            self.coh_mask = os.path.join(self.home, 'maskTempCoh_'+f'{threshold}.h5')
-        if ctype == 'spatial':
-            cohfile       = os.path.join(self.home, 'avgSpatialCoh.h5.h5')
-            self.coh_mask = os.path.join(self.home, 'maskSpatCoh_'+f'{threshold}.h5')
-
-        cmd   = f'generate_mask.py {cohfile} -m {threshold} -o {self.coh_mask} --update\n\n'
-        self.threshold = threshold
-        self.f.write(cmd)
-
-
     def write_demErr(self, file, outfile, gfile=None):
-        if not gfile:
-            gfile = self.geom_file
+        gfile = gfile or self.geom_file
         cmd  = f'dem_error.py {file} {self.time_func} -g {gfile} -o {outfile} '
         cmd += f'--cluster {self.cluster} --num-worker {self.numWorker} --ram {self.ram} --update\n\n'
         self.f.write(cmd)
 
+    def write_check_dates(self, ts_file, corr_file):
+        self.f.write(f'{os.path.abspath(__file__)} --check-dates {ts_file} {corr_file}\n')
+
+    def write_diff(self, f1, f2, out, check=True):
+        if check:
+            self.write_check_dates(f1, f2)
+        self.f.write(f'diff.py {f1} {f2} -o {out} --force\n\n')
 
     def write_closure_phase(self, ifile, nl, bw, action, nsig=3, neps=None, waterMask='waterMask.h5', outdir='.', ram=4, workers=4):
         if int(nl) < int(bw):
             sys.exit('--conn-level (assumed no bias) should be at least the --bandwidth of your analysis (Zheng et al. 2022)')
-
         cmd = f'closure_phase_bias.py -i {ifile} --nl {nl} --bw {bw} -a {action} --wm {waterMask} -o {outdir} '
-        if nsig:
-            cmd += f'--num-sigma {nsig} '
-        if neps:
-            cmd += f'--eps {neps} '
+        if nsig: cmd += f'--num-sigma {nsig} '
+        if neps: cmd += f'--eps {neps} '
         cmd += f'--ram {ram} --num-worker {workers} \n\n'
         self.f.write(cmd)
 
-
-    def write_ts2velo(self, tsfile, outfile, ts2velocmd='', out_dir=None, update=True):
-        if not out_dir:
-            out_dir = self.pDict['path.velocityDir']
-        outfile = os.path.join(out_dir, outfile)
+    def write_ts2velo(self, tsfile, outfile, ts2velocmd=None, out_dir=None, update=True):
+        outfile = os.path.join(out_dir or self.veldir, outfile)
         cmd  = f'timeseries2velocity.py {tsfile} {self.time_func} -o {outfile} '
         cmd += f'--ref-lalo {self.refla} {self.reflo} --ref-date {self.ref_date} '
-
-        if (ts2velocmd is None) or (ts2velocmd == 'none'):
-            ts2velocmd = ''
-        cmd += f' {ts2velocmd} '
+        if _none(ts2velocmd):
+            cmd += f' {ts2velocmd} '
         if update:
             cmd += '--update '
-        cmd += '\n\n'
-        self.f.write(cmd)
+        self.f.write(cmd + '\n\n')
 
+    def write_plate_motion_model(self):
+        """ ITRF14 plate-motion LOS velocity, computed once (Stephenson et al. 2022) """
+        if self.itrffile:
+            self.f.write(f'plate_motion.py --geom {self.geom_file} --plate {self.plateName} -s {self.itrffile}\n\n')
 
-    def write_plate_motion(self, gfile=None, itrffile=None, vfile=None):
-        """ Create commands for plate motion model adjustment in MintPy (Stephenson et al. 2022)
-        """
-        if not gfile:
-            gfile = self.geom_file
-
-        cmd   = f'plate_motion.py --geom {gfile} {self.itrfPlate} '
-        if vfile:
-            cmd += f'--velo {vfile} '
-        if itrffile:
-            cmd += f'-s {itrffile} '
-            cmd += '\n\n'
-        self.f.write(cmd)
-
+    def write_remove_plate(self, vfile):
+        """ velocity - plate-motion model; equals `plate_motion.py --velo` without recomputing the model """
+        if self.itrffile:
+            out = vfile.replace('.h5', '_ITRF14.h5')
+            self.f.write(f'diff.py {vfile} {self.itrffile} -o {out}\n\n')
 
     def write_plot_velo(self, file, dataset, vlim='None,None', dem_file=None, title=None, outfile=None, picdir=None, mask=None, update=True):
-        if not picdir:
-            picdir = self.pDict['path.extraPicDir']
-        base = os.path.basename(file).split('.')[0]
-        if not title:   title   = str(dataset)
-        if not outfile:
-            outfile = os.path.join(picdir, base+'.png')
-
-        if not dem_file:
-            dem_file   = os.path.join(self.indir, 'srtm.dem')   # or read from self.geom_file
-        shade_exag = self.pDict['plot.shadeExag']
-        shade_min  = self.pDict['plot.shadeMin']
-        shade_max  = self.pDict['plot.shadeMax']
-        alpha      = self.pDict['plot.velocityAlpha']
-        cmap       = self.pDict['plot.velocityCmap']
-        unit       = self.pDict['plot.veloUnit']
-        dpi        = self.pDict['plot.dpi']
-        xmin       = self.pDict['plot.lonMin']
-        xmax       = self.pDict['plot.lonMax']
-        ymin       = self.pDict['plot.latMin']
-        ymax       = self.pDict['plot.latMax']
-
+        P = self.pDict
+        picdir  = picdir or self.extrapic
+        base    = os.path.basename(file).split('.')[0]
+        title   = title or str(dataset)
+        outfile = outfile or os.path.join(picdir, base + '.png')
+        dem_file = dem_file or os.path.join(self.indir, 'srtm.dem')
         if not mask:
-            mask   = self.pDict['plot.velocityMsk']
-            if mask:
-                if   mask in ['water','auto']: mask_file = self.water_mask               # e.g., waterMask.h5
-                elif mask in ['coh']         : mask_file = self.coh_mask                 # e.g., maskTempCoh.h5
-                elif mask in ['connComp']    : mask_file = self.conn_mask                # e.g., maskConnComp.h5
-                elif mask in ['custom']      : mask_file = self.pDict['path.customMask'] # e.g., maskCustom.h5
-                else                         : mask_file = 'no'
+            m = _none(P['wrapper.plot.velocityMsk'])
+            mask = {'water': self.water_mask, 'coh': self.coh_mask, 'connComp': self.conn_mask,
+                    'custom': P['wrapper.customMask']}.get(m, 'no')
+        vmin, vmax = str(vlim).split(',')
+        cmd  = f"view.py {file} {dataset} -c {P['wrapper.plot.velocityCmap']} "
+        cmd += f"--dem {dem_file} --alpha {P['wrapper.plot.velocityAlpha']} "
+        cmd += (f"--dem-nocontour --shade-exag {P['wrapper.plot.shadeExag']} "
+                f"--shade-min {P['wrapper.plot.shadeMin']} --shade-max {P['wrapper.plot.shadeMax']} ")
+        cmd += f"--mask {mask} --zm --unit {P['wrapper.plot.veloUnit']} --ref-lalo {self.refla} {self.reflo} "
+        if _none(vmin) is not None:
+            cmd += f'--vlim {vmin} {vmax} '
+        if _none(P['wrapper.plot.lonMin']) is not None:
+            cmd += f"--sub-lon {P['wrapper.plot.lonMin']} {P['wrapper.plot.lonMax']} "
+        if _none(P['wrapper.plot.latMin']) is not None:
+            cmd += f"--sub-lat {P['wrapper.plot.latMin']} {P['wrapper.plot.latMax']} "
+        cmd += f"--nodisplay --dpi {P['wrapper.plot.dpi']} --figtitle {title} -o {outfile} "
+        if update:
+            cmd += '--update '
+        if getattr(self, 'parallel_plot', False):
+            self.f.write(cmd + ' &\n[ $(jobs -rp | wc -l) -ge 6 ] && wait -n\n\n')   # at most 6 at once
         else:
-            mask_file = mask
+            self.f.write(cmd + '\n\n')
 
-        vmin, vmax = vlim.split(',')
-
-        cmd  = f"view.py {file} {dataset} -c {cmap} "
-        cmd += f"--dem {dem_file} --alpha {alpha} "
-        cmd += f"--dem-nocontour --shade-exag {shade_exag} --shade-min {shade_min} --shade-max {shade_max} "
-        cmd += f"--mask {mask_file} --zm --unit {unit} --ref-lalo {self.refla} {self.reflo} "
-        if (vmin is not None) and (vmin != 'none'): cmd += f'--vlim {vmin} {vmax} '
-        if (xmin is not None) and (xmin != 'none'): cmd += f'--sub-lon {xmin} {xmax} '
-        if (ymin is not None) and (ymin != 'none'): cmd += f'--sub-lat {ymin} {ymax} '
-        cmd += f"--nodisplay --dpi {dpi} "
-        cmd += f"--figtitle {title} -o {outfile} "
-
-        if update: cmd += '--update '
-        cmd += '\n\n'
-        self.f.write(cmd)
-
-
-    def write_closurePhase_Mask(self, bw, nl, nsig=3, ram=8, workers=4, threshold=0.9,
-                                clpdir='closurePhase', maskDict=None):
-        """ Create commands for closure phase bias analysis (Zheng et al. 2022)
-        """
+    def write_closurePhase_Mask(self, bw, nl, nsig=3, ram=8, workers=4, clpdir='closurePhase', maskDict=None):
+        """ Closure phase bias analysis (Zheng et al. 2022) """
         self.f.write(f'mkdir -p {clpdir} \n\n')
-
-        # calculate
         self.f.write('## Do closure phase bias calculation\n\n')
         self.f.write(f'mask.py {self.ifg_stack} -m {self.water_mask} --fill 0 -o {self.ifg_stack_msk}\n\n')
         self.write_closure_phase(self.ifg_stack_msk, nl=nl, bw=bw, action='mask',           nsig=nsig, ram=ram, workers=workers)
         self.write_closure_phase(self.ifg_stack_msk, nl=nl, bw=bw, action='quick_estimate', nsig=nsig, ram=ram, workers=workers)
-        #self.f.write(f'modify_network.py {self.ifg_stack_msk} --max-conn-num {bw}\n\n')
-        #self.write_closure_phase(self.ifg_stack_msk, nl=nl, bw=bw, action='estimate',       nsig=nsig, ram=ram, workers=workers)
-        #self.f.write(f'\\mv maskClosurePhase.h5 avgCpxClosurePhase.h5 wratio.h5 timeseriesBiasApprox.h5 timeseriesBias.h5 {clpdir}\n\n')
         self.f.write(f'\\mv maskClosurePhase.h5 avgCpxClosurePhase.h5 wratio.h5 timeseriesBiasApprox.h5 {clpdir}\n\n')
-
-        # create customed masks
-        if maskDict is None:
-            maskDict = {
-                'a' : 'maskClp_tCoh.h5',
-                'b' : 'maskTri.h5',
-                'c' : 'maskClp_tCoh_Tri.h5',
-            }
-        mask = SimpleNamespace(**maskDict)
+        mask = SimpleNamespace(**(maskDict or {'a': 'maskClp_tCoh.h5', 'b': 'maskTri.h5', 'c': 'maskClp_tCoh_Tri.h5'}))
+        cm = self.pDict['wrapper.customMask']
         self.f.write('## Apply masking based on closure phase bias\n\n')
-        self.f.write(f'mask.py {clpdir}/maskClosurePhase.h5 -m maskTempCoh_{threshold}.h5 --fill 0 -o {clpdir}/{mask.a}\n\n')
-        self.f.write(f"test -f {self.pDict['path.customMask']} && mask.py {clpdir}/{mask.a} -m {self.pDict['path.customMask']} --fill 0 -o {clpdir}/{mask.a}\n\n")
+        self.f.write(f'mask.py {clpdir}/maskClosurePhase.h5 -m {self.coh_mask} --fill 0 -o {clpdir}/{mask.a}\n\n')
+        self.f.write(f'test -f {cm} && mask.py {clpdir}/{mask.a} -m {cm} --fill 0 -o {clpdir}/{mask.a}\n\n')
         self.f.write(f'generate_mask.py numTriNonzeroIntAmbiguity.h5 -M 0 -o {mask.b}\n\n')
         self.f.write(f'mask.py {clpdir}/{mask.a} -m {mask.b} --fill 0 -o {clpdir}/{mask.c}\n\n')
-
-
-        # ts2velo fit to icams GAM timeseries
-        veldir = os.path.normpath('./' + self.pDict['path.velocityDir'])
-        #self.write_ts2velo(f'{clpdir}/timeseriesBias.h5', 'velocityBias.h5', ts2velocmd=self.pDict['mintpy.ts2velo'], update=False)
-        self.write_ts2velo(f'{clpdir}/timeseriesBiasApprox.h5', 'velocityAppBias.h5', ts2velocmd=self.pDict['mintpy.ts2velo'], update=False)
-
-        # plot the velocityBias
-        picdir   = os.path.normpath('./' + self.pDict['path.extraPicDir'])
-        dset     = 'velocity'
-        dem_file = './inputs/srtm.dem'
-        mask     = f'maskTempCoh_{threshold}.h5'
-        vlim     = self.pDict['plot.vm_mid']
-        #self.write_plot_velo(f'{veldir}/velocityBias.h5', dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{veldir}/velocityAppBias.h5', dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-
-        dset  = 'velocityStd'
-        ofile = os.path.join(picdir, dset+'Bias'+'.png')
-        title = dset+'Bias'
-        vlim  = self.pDict['plot.vm_STD']
-        #self.write_plot_velo(f'{veldir}/velocityBias.h5', dset, vlim, dem_file=dem_file, mask=mask, title=title, outfile=ofile, update=False)
-        self.write_plot_velo(f'{veldir}/velocityAppBias.h5', dset, vlim, dem_file=dem_file, mask=mask, title=title, outfile=ofile, update=False)
-
+        self.write_ts2velo(f'{clpdir}/timeseriesBiasApprox.h5', 'velocityAppBias.h5', ts2velocmd=self.pDict['wrapper.ts2velo'], update=False)
+        veldir = os.path.normpath('./' + self.veldir)
+        picdir = os.path.normpath('./' + self.extrapic)
+        self.write_plot_velo(f'{veldir}/velocityAppBias.h5', 'velocity', self.pDict['wrapper.plot.vm_mid'],
+                             mask=self.coh_mask, picdir=picdir, update=False)
+        self.write_plot_velo(f'{veldir}/velocityAppBias.h5', 'velocityStd', self.pDict['wrapper.plot.vm_STD'],
+                             mask=self.coh_mask, title='velocityStdBias',
+                             outfile=os.path.join(picdir, 'velocityStdBias.png'), update=False)
 
     def write_icams(self, ref_ts_file, ts_icams=None, proj='los', nproc=4, method='sklm', icamdir='icams'):
-        """Create commands for ICAMS global atmospheric model resampling (Cao et al. 2021)
-        """
-        outfile1 = f'timeseries_icams_{proj}_{method}.h5'      # ICAMS esimated GAM timeseries ("add" to MintPy timeseries*.h5 to correct)
-        outfile2 = f'timeseries_icamsCor_{proj}_{method}.h5'   # ICAMS correced timeseries
+        """ ICAMS global atmospheric model resampling (Cao et al. 2021) """
+        outfile1 = f'timeseries_icams_{proj}_{method}.h5'
+        outfile2 = f'timeseries_icamsCor_{proj}_{method}.h5'
         self.f.write('## Need to have ICAMS and dependencies installed before running\n\n')
         self.f.write(f'# rm -rf ./{icamdir}/{self.gam}/*.npy ./{icamdir}/{self.gam}/sar # remove old los results\n\n')
         self.f.write(f"mkdir -p {icamdir} && \\cp {self.iDict['mintpy.load.metaFile']} {icamdir}\n\n")
         self.f.write(f'tropo_icams.py {ref_ts_file} {self.geom_file} --sar-par {icamdir}/IW1.xml --ref-file {ref_ts_file} --project {proj} --method {method} --nproc {nproc}\n\n')
-        self.f.write(f'mv {outfile1} {outfile2} ./{icamdir}\n\n')
-
-        # prepare icams GAM timeseries save into inputs/
+        self.f.write(f'\\mv {outfile1} {outfile2} ./{icamdir}\n\n')
         self.f.write(f'cd ./{icamdir}\n\n')
-        if ts_icams is None:
-            ts_icams = f'{self.indir}/{self.gam}-{proj}-{method}.h5'
-        self.f.write(f"image_math.py {outfile1} '*' -1.0 --output ../{ts_icams}\n\n") # ICAMS esimated GAM timeseries ("subtract" from MintPy timeseries*.h5 to correct)
-        self.f.write(f"rm -rf {outfile1} {outfile2}\n\n")
-
+        ts_icams = ts_icams or f'{self.indir}/{self.gam}-{proj}-{method}.h5'
+        self.f.write(f"image_math.py {outfile1} '*' -1.0 --output ../{ts_icams}\n\n")
+        self.f.write(f'rm -rf {outfile1} {outfile2}\n\n')
         self.f.write(f'cd {self.cwd}\n\n')
-
         return ts_icams
 
 
-    def write_bwAnalysis(self, bw, ts_icams='timeseriesICAMS.h5', clpdir='closurePhase', veldir='velocity_out'):
-        """ Create commands for bandwidth analysis, and apply closure phase bias and ICAMS corrections
-        """
-        bw_dir = f'./bw{bw}'
-
-        to_indir  = os.path.normpath('../'+self.indir)
-        to_clpdir = os.path.normpath('../'+clpdir)
-
-        # inversion on short-bandwidth analysis
-        self.f.write('## Short-bandwidth analysis and corrections\n\n')
-        self.f.write(f'modify_network.py {self.ifg_stack_msk} --max-conn-num {bw}\n\n')
-        self.f.write(f'mkdir -p {bw_dir} && cd {bw_dir}\n\n')
-        self.f.write(f"ifgram_inversion.py {os.path.normpath('../'+self.ifg_stack_msk)} -t {to_indir+'/smallbaselineApp.cfg'} --update\n\n")
-
-        # apply corrections (SET, ERA5, ICAMS, Ion)
-        self.f.write(f"diff.py timeseries.h5     {to_indir}/SET.h5  -o timeseries_SET.h5 --force\n\n")
-        self.f.write(f"diff.py timeseries_SET.h5 {to_indir}/{self.gam}.h5 -o timeseries_SET_{self.gam}.h5 --force\n\n")
-        self.f.write(f"diff.py timeseries_SET_{self.gam}.h5 {to_indir}/ion.h5 -o timeseries_SET_{self.gam}_IonSmooth.h5 --force\n\n")
-        self.f.write(f"diff.py timeseries_SET_{self.gam}.h5 {to_indir}/ionTotal.h5 -o timeseries_SET_{self.gam}_Ion.h5 --force\n\n")   # end
-        self.f.write(f'diff.py timeseries_SET.h5  ../icams/{ts_icams}  -o timeseries_SET_{self.gam}S.h5 --force\n\n')
-        self.f.write(f'diff.py timeseries_SET_{self.gam}S.h5  {to_indir}/ionTotal.h5  -o timeseries_SET_{self.gam}S_Ion.h5 --force\n\n')  # end
-
-        # apply closure phase bias correction
-        self.f.write(f'diff.py timeseries_SET_{self.gam}_Ion.h5 {to_clpdir}/timeseriesBiasApprox.h5 -o timeseries_SET_{self.gam}_Ion_clpApprox.h5 --force\n\n')
-        self.f.write(f'diff.py timeseries_SET_{self.gam}_Ion.h5 {to_clpdir}/timeseriesBias.h5 -o timeseries_SET_{self.gam}_Ion_clp.h5 --force\n\n')
-        self.f.write(f'diff.py timeseries_SET_{self.gam}S_Ion.h5 {to_clpdir}/timeseriesBiasApprox.h5 -o timeseries_SET_{self.gam}S_Ion_clpApprox.h5 --force\n\n')
-        self.f.write(f'diff.py timeseries_SET_{self.gam}S_Ion.h5 {to_clpdir}/timeseriesBias.h5 -o timeseries_SET_{self.gam}S_Ion_clp.h5 --force\n\n')
-
-        # dem error and final residuals
-        gfile = os.path.normpath('../'+self.geom_file)
-        self.write_demErr(gfile=gfile, file=f'timeseries_SET_{self.gam}S_Ion_clp.h5',    outfile=f'timeseries_SET_{self.gam}S_Ion_clp_demErr.h5')
-        self.f.write(f'timeseries_rms.py  timeseriesResidual.h5  --template ../smallbaselineApp.cfg\n\n')
-
-        # velocity of corrected short-bw timeseries
-        ts2velocmd = self.pDict['mintpy.ts2velo']
-        out_dir    = os.path.normpath('../' + veldir)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}_IonSmooth.h5',      f'velocityBW{bw}_SET_{self.gam}_IonSmooth_short.h5', ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}_IonSmooth.h5',      f'velocityBW{bw}_SET_{self.gam}_IonSmooth.h5',       ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}_Ion.h5',            f'velocityBW{bw}_SET_{self.gam}_Ion.h5',             ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}S_Ion.h5',           f'velocityBW{bw}_SET_{self.gam}S_Ion.h5',            ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}S_Ion_clpApprox.h5', f'velocityBW{bw}_SET_{self.gam}S_Ion_clpApprox.h5',  ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}S_Ion_clp.h5',       f'velocityBW{bw}_SET_{self.gam}S_Ion_clp.h5',        ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-        self.write_ts2velo(f'timeseries_SET_{self.gam}S_Ion_clp_demErr.h5',f'velocityBW{bw}_SET_{self.gam}S_Ion_clp_demErr.h5', ts2velocmd=ts2velocmd, out_dir=out_dir, update=False)
-
-        # apply ITRF reference frame
-        gfile = os.path.normpath('../' + self.geom_file)
-        itrffile = os.path.normpath('../'+self.indir+'/ITRF14_'+self.plateName+'.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}_IonSmooth_short.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}_IonSmooth.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}_Ion.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_clpApprox.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_clp.h5')
-        self.write_plate_motion(gfile=gfile, itrffile=itrffile, vfile=f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_clp_demErr.h5')
-
-        # plot the velocity
-        picdir   = os.path.normpath('../' + self.pDict['path.extraPicDir'])
-        dset     = 'velocity'
-        vlim     = self.pDict['plot.vm_mid']
-        dem_file = '../inputs/srtm.dem'
-        mask     = f'../maskTempCoh_{self.threshold}.h5'
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}_IonSmooth_short_ITRF14.h5',  dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}_IonSmooth_ITRF14.h5',        dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}_Ion_ITRF14.h5',              dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_ITRF14.h5',             dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_clpApprox_ITRF14.h5',   dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_clp_ITRF14.h5',         dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-        self.write_plot_velo(f'{out_dir}/velocityBW{bw}_SET_{self.gam}S_Ion_clp_demErr_ITRF14.h5',  dset, vlim, dem_file=dem_file, mask=mask, picdir=picdir, update=False)
-
-        # reset the ifgram network to all pairs, finish
-        self.f.write(f'cd {self.cwd}\n\n')
-        self.f.write(f'modify_network.py {self.ifg_stack_msk} --reset\n')
-        self.f.write(f'modify_network.py {self.ifg_stack_msk} -t {self.template}\n\n')
-
-
-###############################
-# Utilities
-###############################
-## ----------------- parameter file descriptions
-PARAM_DESCRIPTION = {
-    'mintpy.template'         : '# used to run mintpy and copy saved as smallbaselineApp.cfg',
-    'mintpy.tempCohThreshold' : '# create a mask from temporal coherence',
-    'mintpy.itrfPlate'        : '# plate arg parameters in ITRF14 plate motion model',
-    'mintpy.plateName'        : '# plate name in ITRF14 plate motion model',
-    'mintpy.ts2velo'          : '# commands for timeseries2velocity, see timeseries2velocity -h',
-    'mintpy.bandwidth'        : '# bandwidth of ifgram network analysis (Zheng et al. 2022)',
-    'mintpy.connLevel'        : '# connection level of ifgram network analysis, assume no bias (Zheng et al. 2022)',
-    'path.wbdOrig'            : '# input water body',
-    'path.demOrig'            : '# input DEM',
-    'path.velocityDir'        : '# velocity output folder',
-    'path.extraPicDir'        : '# extra pics output directory (e.g. velocity plots)',
-    'path.customMask'         : '# Given any custom mask',
-    'plot.shadeExag'          : '# DEM shaded relief exageration',
-    'plot.shadeMin'           : '# DEM shaded relief min',
-    'plot.shadeMax'           : '# DEM shaded relief max',
-    'plot.velocityAlpha'      : '# transparency of velocity plot',
-    'plot.velocityCmap'       : '# colormap for the velocity plot',
-    'plot.tempCohCmap'        : '# colormap for temporal coherence in the network plot',
-    'plot.velocityMsk'        : '# ways to mask velocity plot',
-    'plot.veloUnit'           : '# velocity plot unit',
-    'plot.dpi'                : '# output figure dpi',
-    'plot.lonMin'             : '# longitude min',
-    'plot.lonMax'             : '# longitude max',
-    'plot.latMin'             : '# latitute min',
-    'plot.latMax'             : '# latitute max',
-    'plot.vm_big'             : '# vlim for large range',
-    'plot.vm_mid'             : '# vlim for middle range',
-    'plot.vm_sma'             : '# vlim for small range',
-    'plot.vm_STD'             : '# vlim for data Std',
-    'plot.vm_AMP'             : '# vlim for seasonal amplitude',
-    'plot.vm_SET'             : '# vlim for solid earth tides',
-    'plot.vm_GAM'             : '# vlim for WEATHER model',
-    }
-
-def write_line(f, pDict, keys):
-    for key in keys:
-        value = pDict[key]
-        if type(value) == int or type(value) == float:
-            value = str(value)
-        if isinstance(value, list):
-            value = ','.join(str(k) for k in value)
-        if value is None:
-            value = 'none'
-        f.write(f'{key:25s} = {value:20s} {PARAM_DESCRIPTION[key]}\n')
-
-
-def check_parameter_txt(param_file):
-    ## read from param file as dict
-    pDict = readfile.read_template(fname=param_file)
-    for inkey in pDict.keys():
-        if not inkey in PARAM_DESCRIPTION.keys(): print(f' ! Unrecognized parameter: {inkey}, will not be used')
-
-    ## use default value if missing
-    # MintPy related
-    pDict['mintpy.template']          = pDict.get('mintpy.template'         , 'smallbaselineApp.cfg')
-    pDict['mintpy.tempCohThreshold']  = pDict.get('mintpy.tempCohThreshold' , 0.90)
-    pDict['mintpy.itrfPlate']         = pDict.get('mintpy.itrfPlate'        , None)
-    pDict['mintpy.plateName']         = pDict.get('mintpy.plateName'        , None)
-    pDict['mintpy.ts2velo']           = pDict.get('mintpy.ts2velo'          , None)
-    pDict['mintpy.bandwidth']         = pDict.get('mintpy.bandwidth'        , 3)
-    pDict['mintpy.connLevel']         = pDict.get('mintpy.connLevel'        , 10)
-    # File paths and locations
-    pDict['path.wbdOrig']             = pDict.get('path.wbdOrig'            , None)
-    pDict['path.demOrig']             = pDict.get('path.demOrig'            , None)
-    pDict['path.velocityDir']         = pDict.get('path.velocityDir'        , './velocity_out/')
-    pDict['path.extraPicDir']         = pDict.get('path.extraPicDir'        , './pic_supp/')
-    pDict['path.customMask']          = pDict.get('path.customMask'         , 'maskPoly.h5')
-    # Some plotting parameters
-    pDict['plot.shadeExag']           = pDict.get('plot.shadeExag'          , 0.02)
-    pDict['plot.shadeMin']            = pDict.get('plot.shadeMin'           , -6000)
-    pDict['plot.shadeMax']            = pDict.get('plot.shadeMax'           , 4000)
-    pDict['plot.velocityAlpha']       = pDict.get('plot.velocityAlpha'      , 0.6)
-    pDict['plot.velocityCmap']        = pDict.get('plot.velocityCmap'       , 'RdYlBu_r')
-    pDict['plot.tempCohCmap']         = pDict.get('plot.tempCohCmap'        , 'RdYlBu_r')
-    pDict['plot.velocityMsk']         = pDict.get('plot.velocityMsk'        , None)
-    pDict['plot.veloUnit']            = pDict.get('plot.veloUnit'           , 'mm')
-    pDict['plot.dpi']                 = pDict.get('plot.dpi'                , 300)
-    pDict['plot.lonMin']              = pDict.get('plot.lonMin'             , None)
-    pDict['plot.lonMax']              = pDict.get('plot.lonMax'             , None)
-    pDict['plot.latMin']              = pDict.get('plot.latMin'             , None)
-    pDict['plot.latMax']              = pDict.get('plot.latMax'             , None)
-    pDict['plot.vm_big']              = pDict.get('plot.vm_big'             , [-8,8])
-    pDict['plot.vm_mid']              = pDict.get('plot.vm_mid'             , [-5,5])
-    pDict['plot.vm_sma']              = pDict.get('plot.vm_sma'             , [-0.2,0.2])
-    pDict['plot.vm_STD']              = pDict.get('plot.vm_STD'             , [0,1.0])
-    pDict['plot.vm_AMP']              = pDict.get('plot.vm_AMP'             , [0,16])
-    pDict['plot.vm_SET']              = pDict.get('plot.vm_SET'             , [-0.2,0.2])
-    pDict['plot.vm_GAM']              = pDict.get('plot.vm_GAM'             , [-2,2])
-
-    ## write the full params to txt
-    full_file = os.path.splitext(param_file)[0]+'.full.par'
-    with open(full_file, 'w') as f:
-        keys = list(np.array(list(pDict.keys()))[[k.startswith('mintpy') for k in pDict.keys()]])
-        f.write('## MintPy related\n')
-        write_line(f, pDict, keys)
-        keys = list(np.array(list(pDict.keys()))[[k.startswith('path') for k in pDict.keys()]])
-        f.write('\n## File paths and locations\n')
-        write_line(f, pDict, keys)
-        keys = list(np.array(list(pDict.keys()))[[k.startswith('plot') for k in pDict.keys()]])
-        f.write('\n## Some plotting parameters\n')
-        write_line(f, pDict, keys)
-
-    ## read from the full params file
-    pDict = readfile.read_template(fname=full_file)
-    return pDict
-
 #############################################################################################################
-## Major function wrting the workflow
+## Major function writing the workflow
 #############################################################################################################
 
 def main(proc, inps):
-    ########## Initializing the MintPy process ##############
-
     proc.get_template()
     proc.run_resampWbd()
-    ram   = proc.ram
-    nproc = proc.numWorker
+    ram, nproc, gam = proc.ram, proc.numWorker, proc.gam
+    P = proc.pDict
+    veldir, picdir = proc.veldir, proc.extrapic
+    vm_mid = P['wrapper.plot.vm_mid']
 
-    ########## Load data and geocode stack DEM ##############
+    ########## Load data (geocoded) ##############
     proc.create_run_file('run_0_prep')
-
-    proc.write_smallbaselineApp(dostep='load_data')
-    proc.write_radar2geo_inputs()
+    if P['wrapper.loader'] == 'geo':
+        proc.write_load_stack()
+    else:
+        proc.write_smallbaselineApp(dostep='load_data')
+        proc.write_radar2geo_inputs()
     proc.f.write(f'{FILE_NAME} {proc.param_file} -a dem_resamp\n')
-
     proc.f.close()
-
 
     ########## Network modifications and plots ##############
     proc.create_run_file('run_1_network')
-
     proc.write_smallbaselineApp(dostep='modify_network')
     proc.write_smallbaselineApp(dostep='reference_point')
+    # reference pixel on an isolated unwrapping patch? (warning only; see check_ref_closure.py -h)
+    proc.f.write(f"{os.path.join(WRAPPER_DIR, 'check_ref_closure.py')} {proc.ifg_stack} --suggest 60\n\n")
     proc.write_smallbaselineApp(dostep='quick_overview')
     proc.write_plot_network(stacks=['ifgramStack.h5'], cmap_vlist=[0.2, 0.7, 1.0])
-    proc.f.write('smallbaselineApp.py --plot \n\n')
-
     proc.f.close()
 
+    ########## ERA5-aided re-unwrapping (2026-10) ##############
+    reunwrap = _none(P['wrapper.reunwrap'])
+    if reunwrap in (None, 'no'):
+        print('wrapper.reunwrap = no: run_1b_reunwrap not written')
+    elif _none(proc.iDict.get('mintpy.load.intFile', 'auto')) is None:
+        print(' ! wrapper.reunwrap = {} needs the wrapped phase: set mintpy.load.intFile '
+              '(e.g. ../hpc_topsStack/merged/interferograms/*_*/filt_fine.int) and re-run run_0; '
+              'run_1b_reunwrap not written'.format(reunwrap))
+    elif proc.gam != 'ERA5':
+        print(f' ! wrapper.reunwrap supports ERA5 only (weatherModel = {proc.gam}); run_1b_reunwrap not written')
+    else:
+        if reunwrap not in ('whirlwind', 'snaphu'):
+            sys.exit(f'wrapper.reunwrap = {reunwrap}: use whirlwind, snaphu or no')
+        proc.create_run_file('run_1b_reunwrap')
+        proc.write_reunwrap()
+        proc.f.close()
 
     ################### Network inversion ##################
+    # maskTempCoh.h5 is written by invert_network with mintpy.networkInversion.minTempCoh
+    wf = proc.iDict.get('mintpy.networkInversion.weightFunc', 'auto')
+    if wf != 'no':
+        print(f' ! mintpy.networkInversion.weightFunc = {wf}; recommended: no (see the 2026-10 notes above)')
     proc.create_run_file('run_2_inversion')
-
+    if _none(P['wrapper.cleanThr']) not in (None, 'no'):
+        proc.write_clean_network()
     proc.write_smallbaselineApp(dostep='correct_unwrap_error')
     proc.write_smallbaselineApp(dostep='invert_network')
-    proc.write_generate_mask()
-
     proc.f.close()
-
-
 
     ################## ICAMS #######################
-    proc.create_run_file('run_3_icams')
-
-    icams_proj   = 'los'
-    icams_method = 'sklm'
-    ts_icams = proc.write_icams(ref_ts_file='timeseries.h5', proj=icams_proj, nproc=nproc, method=icams_method)
-    proc.f.write("echo 'Normal finish the ICAMS analysis'\n")
-    proc.f.close()
-
+    gam2, ts_icams = None, None
+    if inps.icams:
+        gam2 = f'{gam}Cao2021'
+        proc.create_run_file('run_3_icams')
+        ts_icams = proc.write_icams(ref_ts_file='timeseries.h5', proj='los', nproc=nproc, method='sklm')
+        proc.f.write("echo 'Normal finish the ICAMS analysis'\n")
+        proc.f.close()
 
     ################ Apply corrections ####################
     proc.create_run_file('run_4_corrections')
-
-    proc.itrfPlate = proc.pDict['mintpy.itrfPlate']
-    proc.plateName = proc.pDict['mintpy.plateName']
-    gam = proc.gam
-
-    if proc.plateName == 'none':
-        proc.plateName = proc.itrfPlate.split()[-1]
-
-    itrffile = os.path.join(proc.indir, f'ITRF14_{proc.plateName}.h5')
-    proc.write_plate_motion(itrffile=itrffile)
-    proc.f.write('add.py  inputs/ion.h5   inputs/ionBurstRamp.h5  -o inputs/ionTotal.h5  --force\n\n')
-
+    proc.write_plate_motion_model()
     proc.write_smallbaselineApp(dostep='correct_LOD')
     proc.write_smallbaselineApp(dostep='correct_SET')
     proc.write_smallbaselineApp(dostep='correct_troposphere')
-
-    # try correct troposphere with ICAMS, with file suffix ERA5S, "S" for Stochastic
-    proc.f.write(f'diff.py timeseries_SET.h5 {ts_icams} -o timeseries_SET_{gam}S.h5  --force\n\n')
-
-    # correct for ionosphere, both smooth iono and the iono burst ramps (can be dangerous)
-    proc.f.write(f'diff.py timeseries_SET_{gam}.h5  inputs/ion.h5       -o timeseries_SET_{gam}_Ion.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_{gam}.h5  inputs/ionTotal.h5  -o timeseries_SET_{gam}_IonTotal.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_{gam}S.h5  inputs/ion.h5       -o timeseries_SET_{gam}S_Ion.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_{gam}S.h5  inputs/ionTotal.h5  -o timeseries_SET_{gam}S_IonTotal.h5  --force\n\n')
-
-    # correct for any topographic term (due to look angle error, commonly referred to as DEM error)
-    # then compute timeseriesResidual.h5 against some functional fit
-    proc.write_demErr(f'timeseries_SET_{gam}_Ion.h5', f'timeseries_SET_{gam}_Ion_demErr.h5') # operate on the smooth iono corrected file
-    proc.write_demErr(f'timeseries_SET_{gam}S_Ion.h5', f'timeseries_SET_{gam}S_Ion_demErr.h5') # operate on the smooth iono corrected file
-
-    # compute RMS of the residuals
-    proc.write_smallbaselineApp(dostep='residual_RMS')
-
-    # whether to deramp timeseries?
+    proc.write_diff(f'timeseries_SET_{gam}.h5', 'inputs/ion.h5', f'timeseries_SET_{gam}_Ion.h5')
+    proc.write_demErr(f'timeseries_SET_{gam}_Ion.h5', f'timeseries_SET_{gam}_Ion_demErr.h5')
+    if inps.icams:
+        proc.write_diff('timeseries_SET.h5', ts_icams, f'timeseries_SET_{gam2}.h5')
+        proc.write_diff(f'timeseries_SET_{gam2}.h5', 'inputs/ion.h5', f'timeseries_SET_{gam2}_Ion.h5')
+        # separate folder: dem_error writes timeseriesResidual.h5 next to its output
+        proc.f.write('mkdir -p icams_demErr\n\n')
+        proc.write_demErr(f'timeseries_SET_{gam2}_Ion.h5', f'icams_demErr/timeseries_SET_{gam2}_Ion_demErr.h5')
+    proc.write_smallbaselineApp(dostep='residual_RMS')      # writes reference_date.txt
     proc.write_smallbaselineApp(dostep='deramp')
-
     proc.f.close()
-
 
     ################ Velocity estimation ###################
     proc.create_run_file('run_5_velocity')
-
-    # velocity fitting & plotting dictionary
     ts2veloDict = {
-        # velocity fit to the stages of time series
-        f'velocity'                              : [f'timeseries'                       , proc.pDict['plot.vm_mid']],
-        f'velocity_SET'                          : [f'timeseries_SET'                   , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}'                    : [f'timeseries_SET_{gam}'             , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}_Ion'                : [f'timeseries_SET_{gam}_Ion'         , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}_IonTotal'           : [f'timeseries_SET_{gam}_IonTotal'    , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}_Ion_demErr'         : [f'timeseries_SET_{gam}_Ion_demErr'  , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}_Ion_demErr_ITRF14'  : [None                                , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}S'                   : [f'timeseries_SET_{gam}S'            , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}S_Ion'               : [f'timeseries_SET_{gam}S_Ion'        , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}S_IonTotal'          : [f'timeseries_SET_{gam}S_IonTotal'   , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}S_Ion_demErr'        : [f'timeseries_SET_{gam}S_Ion_demErr' , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_{gam}S_Ion_demErr_ITRF14' : [None                                , proc.pDict['plot.vm_mid']],
-        f'velocityICAMS-PyAPS'                   : [None                                , proc.pDict['plot.vm_sma']],
-
-        # apparent velocity fit of each correction screen
-        f'velocitySET'                           : [f'inputs/SET'                       , proc.pDict['plot.vm_SET']],
-        f'velocity{gam}'                         : [f'inputs/{gam}'                     , proc.pDict['plot.vm_GAM']],
-        f'velocity{gam}S'                        : [ts_icams.split('.h5')[0]            , proc.pDict['plot.vm_GAM']],
-        f'velocityIon'                           : [f'inputs/ion'                       , proc.pDict['plot.vm_mid']],
-        f'velocityIonBurstRamp'                  : [f'inputs/ionBurstRamp'              , proc.pDict['plot.vm_sma']],
-        f'velocityIonTotal'                      : [f'inputs/ionTotal'                  , proc.pDict['plot.vm_mid']],
-        }
-
-    # fit on these time series
+        'velocity'                    : ['timeseries'                     , vm_mid],
+        'velocity_SET'                : ['timeseries_SET'                 , vm_mid],
+        f'velocity_SET_{gam}'         : [f'timeseries_SET_{gam}'          , vm_mid],
+        f'velocity_SET_{gam}_Ion'     : [f'timeseries_SET_{gam}_Ion'      , vm_mid],
+        f'velocity_SET_{gam}_Ion_demErr' : [f'timeseries_SET_{gam}_Ion_demErr', vm_mid],
+        f'velocity_SET_{gam}_Ion_demErr_ITRF14' : [None                   , vm_mid],
+        'velocitySET'                 : ['inputs/SET'                     , P['wrapper.plot.vm_SET']],
+        f'velocity{gam}'              : [f'inputs/{gam}'                  , P['wrapper.plot.vm_GAM']],
+        'velocityIon'                 : ['inputs/ion'                     , vm_mid],
+    }
+    if inps.icams:
+        ts2veloDict.update({
+            'velocityICAMS-PyAPS'                  : [None                                  , P['wrapper.plot.vm_sma']],
+            f'velocity_SET_{gam2}'                 : [f'timeseries_SET_{gam2}'              , vm_mid],
+            f'velocity_SET_{gam2}_Ion'             : [f'timeseries_SET_{gam2}_Ion'          , vm_mid],
+            f'velocity_SET_{gam2}_Ion_demErr'      : [f'icams_demErr/timeseries_SET_{gam2}_Ion_demErr', vm_mid],
+            f'velocity_SET_{gam2}_Ion_demErr_ITRF14' : [None                                , vm_mid],
+            f'velocity{gam2}'                      : [ts_icams.split('.h5')[0]              , P['wrapper.plot.vm_GAM']],
+        })
     for key, item in ts2veloDict.items():
-        if not item[0]: continue
-        vfile = key + '.h5'
-        tfile = item[0] + '.h5'
-        proc.write_ts2velo(tfile, vfile, ts2velocmd=proc.pDict['mintpy.ts2velo'], update=False)
-
-    # velocity difference between ICAMS vs PyAPS
-    veldir = proc.pDict['path.velocityDir']
-    proc.f.write(f'diff.py {veldir}velocity{gam}S.h5 {veldir}velocity{gam}.h5 -o {veldir}velocityICAMS-PyAPS.h5 \n\n')
-
-    # plate motion removal (reference frame adjustment) on these velocity
-    itrffile = os.path.join(proc.indir, f'ITRF14_{proc.plateName}.h5')
-    vfile    = os.path.join(veldir, f'velocity_SET_{gam}_Ion_demErr.h5')
-    proc.write_plate_motion(vfile=vfile, itrffile=itrffile)
-    vfile    = os.path.join(veldir, f'velocity_SET_{gam}S_Ion_demErr.h5')
-    proc.write_plate_motion(vfile=vfile, itrffile=itrffile)
-
+        if item[0]:
+            proc.write_ts2velo(item[0] + '.h5', key + '.h5', ts2velocmd=P['wrapper.ts2velo'], update=False)
+    proc.write_remove_plate(os.path.join(veldir, f'velocity_SET_{gam}_Ion_demErr.h5'))
+    if inps.icams:
+        proc.write_remove_plate(os.path.join(veldir, f'velocity_SET_{gam2}_Ion_demErr.h5'))
+        proc.f.write(f'diff.py {veldir}velocity{gam2}.h5 {veldir}velocity{gam}.h5 -o {veldir}velocityICAMS-PyAPS.h5 \n\n')
     proc.f.close()
-
 
     ################## Plot Velocity #######################
     proc.create_run_file('run_6_velocityPlot')
-
-    picdir = proc.pDict['path.extraPicDir']
-    veldir = proc.pDict['path.velocityDir']
     proc.f.write(f'mkdir -p {picdir}\n\n')
-
-    dset = 'velocity'
-    vfiles = [os.path.join(veldir,x+'.h5') for x in ts2veloDict.keys()]
-    vfiles += glob.glob(os.path.join(veldir,'*.h5'))
-    vfiles = sorted(list(set(vfiles)))
-
+    proc.parallel_plot = True
+    vfiles = sorted(set([os.path.join(veldir, x + '.h5') for x in ts2veloDict] + glob.glob(os.path.join(veldir, '*.h5'))))
     for vfile in vfiles:
         key = os.path.basename(vfile).split('.h5')[0]
-        ofile = os.path.join(picdir, key + '.png')
-        if key in ts2veloDict.keys():
-            vlim  = ts2veloDict[key][1]
-            if ts2veloDict[key][0]:
-                if ts2veloDict[key][0].startswith('timeseries_'):
-                    title = dset+ts2veloDict[key][0].split('timeseries')[-1]
-                else:
-                    title = key
-            else:
-                title = key
-        else:
-            vlim = proc.pDict['plot.vm_mid']
-            title = str(key)
-        proc.write_plot_velo(vfile, dset, vlim, title=title, outfile=ofile, update=False)
-
-    dset = 'velocityStd'
-    suffs = ['', gam, gam+'S', 'SET', 'Ion']
-    for suff in suffs:
-        vfile = os.path.join(veldir, 'velocity'+suff+'.h5')
-        ofile = os.path.join(picdir, dset+suff+'.png')
-        title = dset+suff
-        proc.write_plot_velo(vfile, dset, proc.pDict['plot.vm_STD'], title=title, outfile=ofile, update=False)
-
-    proc.f.write('smallbaselineApp.py --plot \n\n')
+        src, vlim = ts2veloDict.get(key, [None, vm_mid])
+        title = 'velocity' + src.split('timeseries')[-1] if (src and src.startswith('timeseries_')) else key
+        proc.write_plot_velo(vfile, 'velocity', vlim, title=title, outfile=os.path.join(picdir, key + '.png'), update=False)
+    for suff in ['', gam, 'SET', 'Ion'] + ([gam2] if inps.icams else []):
+        proc.write_plot_velo(os.path.join(veldir, f'velocity{suff}.h5'), 'velocityStd', P['wrapper.plot.vm_STD'],
+                             title=f'velocityStd{suff}', outfile=os.path.join(picdir, f'velocityStd{suff}.png'), update=False)
+    proc.f.write('wait\n')
+    proc.parallel_plot = False
     proc.f.close()
 
-
-    ################## Closure phase bias ####################### Testing, need re-factor
+    ################## Closure phase bias (testing) #######################
     proc.create_run_file('run_7_closurePhase')
-
-    clpdir    = './closurePhase'
-    nsig      = 3
-    bw        = int(proc.pDict['mintpy.bandwidth'])
-    nl        = int(proc.pDict['mintpy.connLevel'])
-    threshold = proc.pDict.get('mintpy.tempCohThreshold', 0.90)
-    maskDict = {
-        'a' : 'maskClp_tCoh.h5',
-        'b' : 'maskTri.h5',
-        'c' : 'maskClp_tCoh_Tri.h5',
-    }
-    proc.ifg_stack_msk = os.path.join(proc.indir,'ifgramStack_msk.h5')
-    proc.write_closurePhase_Mask(bw, nl, nsig, ram, nproc, threshold, clpdir, maskDict)
+    proc.ifg_stack_msk = os.path.join(proc.indir, 'ifgramStack_msk.h5')
+    proc.write_closurePhase_Mask(int(P['wrapper.bandwidth']), int(P['wrapper.connLevel']), 3, ram, nproc, './closurePhase')
     proc.f.write("echo 'Normal finish the closure phase bias analysis'\n")
     proc.f.close()
 
-
     ########## generate more timeseries corrections for demo ##########
     proc.create_run_file('run_8_orderTS')
-
-    # model long-wavelength first
-    proc.f.write(f'diff.py timeseries_SET.h5 {itrffile} -o timeseries_SET_ITRF14.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_ITRF14.h5 inputs/ERA5.h5 -o timeseries_SET_ITRF14_{gam}.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_ITRF14.h5 {ts_icams} -o timeseries_SET_ITRF14_{gam}S.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_ITRF14_{gam}S.h5 inputs/ion.h5 -o timeseries_SET_ITRF14_{gam}S_Ion.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_ITRF14_{gam}S.h5 inputs/ionTotal.h5 -o timeseries_SET_ITRF14_{gam}S_IonTotal.h5  --force\n\n')
-    proc.f.write(f'diff.py timeseries_SET_ITRF14_{gam}S_Ion.h5 closurePhase/timeseriesBiasApprox.h5 -o timeseries_SET_ITRF14_{gam}S_Ion_Cpb.h5  --force\n\n')
-
-
-    # velocity fitting & plotting dictionary
-    ts2veloDict = {
-        # velocity fit to the stages of time series
-        f'velocity_SET_ITRF14'                 : [f'timeseries_SET_ITRF14'                 , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_ITRF14_{gam}'           : [f'timeseries_SET_ITRF14_{gam}'           , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_ITRF14_{gam}S'          : [f'timeseries_SET_ITRF14_{gam}S'          , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_ITRF14_{gam}S_Ion'      : [f'timeseries_SET_ITRF14_{gam}S_Ion'      , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_ITRF14_{gam}S_IonTotal' : [f'timeseries_SET_ITRF14_{gam}S_IonTotal' , proc.pDict['plot.vm_mid']],
-        f'velocity_SET_ITRF14_{gam}S_Ion_Cpb'  : [f'timeseries_SET_ITRF14_{gam}S_Ion_Cpb'  , proc.pDict['plot.vm_mid']],
-        }
-
-    # fit on these time series
-    for key, item in ts2veloDict.items():
-        if not item[0]: continue
-        vfile = key + '.h5'
-        tfile = item[0] + '.h5'
-        proc.write_ts2velo(tfile, vfile, ts2velocmd=proc.pDict['mintpy.ts2velo'], update=False)
-
-    # plot
-    vfiles = [os.path.join(veldir,x+'.h5') for x in ts2veloDict.keys()]
-    vfiles = sorted(list(set(vfiles)))
-
-    for vfile in vfiles:
-        dset  = 'velocity'
-        key   = os.path.basename(vfile).split('.h5')[0]
-        suff  = key.split(dset)[-1]
-        ofile = os.path.join(picdir, key + '.png')
-        vlim  = ts2veloDict[key][1]
-        title = dset+ts2veloDict[key][0].split('timeseries')[-1]
-        proc.write_plot_velo(vfile, dset, vlim, title=title, outfile=ofile, update=False)
-
-        dset  = 'velocityStd'
-        ofile = os.path.join(picdir, dset+suff+'.png')
-        vlim  = proc.pDict['plot.vm_STD']
-        title = dset+suff
-        proc.write_plot_velo(vfile, dset, vlim, title=title, outfile=ofile, update=False)
-
+    if proc.itrffile:
+        proc.write_diff('timeseries_SET.h5', proc.itrffile, 'timeseries_SET_ITRF14.h5', check=False)
+        proc.write_diff('timeseries_SET_ITRF14.h5', f'inputs/{gam}.h5', f'timeseries_SET_ITRF14_{gam}.h5')
+        ts2 = {'velocity_SET_ITRF14': 'timeseries_SET_ITRF14', f'velocity_SET_ITRF14_{gam}': f'timeseries_SET_ITRF14_{gam}'}
+        for key, ts in ts2.items():
+            proc.write_ts2velo(ts + '.h5', key + '.h5', ts2velocmd=P['wrapper.ts2velo'], update=False)
+            vfile = os.path.join(veldir, key + '.h5'); suff = key.split('velocity')[-1]
+            proc.write_plot_velo(vfile, 'velocity', vm_mid, title='velocity' + ts.split('timeseries')[-1],
+                                 outfile=os.path.join(picdir, key + '.png'), update=False)
+            proc.write_plot_velo(vfile, 'velocityStd', P['wrapper.plot.vm_STD'], title='velocityStd' + suff,
+                                 outfile=os.path.join(picdir, 'velocityStd' + suff + '.png'), update=False)
     proc.f.close()
-
 
     ############# Compile all together in a script ############
+    steps = list(proc.run_files)          # exactly the files written above
+
+    ########## optional: MintPy's full default plot set (slow; replots every product) ##########
+    proc.create_run_file('run_9_mintpyPlot')
+    dpi = proc.iDict.get('mintpy.plot.dpi', 'auto'); dpi = 150 if dpi == 'auto' else dpi
+    opt = f'--dpi {dpi} --noverbose --nodisplay --update --memory 4 --outdir pic'
+    ts_opt = '--noaxis -u cm --wrap --wrap-range -5 5'
+    J = ' &\n[ $(jobs -rp | wc -l) -ge 6 ] && wait -n\n'          # up to 6 plots at once
+    proc.f.write('# MintPy default figures, without the ifgramStack ones (fast)\nmkdir -p pic\n\n')
+    for args in [f'velocity.h5 --dem {proc.geom_file} --mask maskTempCoh.h5',
+                 'temporalCoherence.h5 -c gray -v 0 1', 'maskTempCoh.h5 -c gray -v 0 1',
+                 proc.geom_file, 'avgPhaseVelocity.h5', 'avgSpatialCoh.h5 -c gray -v 0 1',
+                 'maskConnComp.h5 -c gray -v 0 1', 'numTriNonzeroIntAmbiguity.h5 --mask no',
+                 f'velocity{gam}.h5 --mask no', 'numInvIfgram.h5 --mask no']:
+        proc.f.write(f'view.py {opt} {args}{J}')
+    proc.f.write(f'for f in timeseries*.h5; do\n  view.py {opt} $f {ts_opt}{J.replace(chr(10), chr(10) + "  ")}done\nwait\n\n')
+    proc.f.write('# full MintPy figure set incl. every interferogram of ifgramStack.h5 (slow):\n')
+    proc.f.write('# smallbaselineApp.py --plot\n')
+    proc.f.close()
     proc.create_run_file('run_all')
-    runfiles = sorted(glob.glob(os.path.join(inps.proc_home, 'run_*_*')))
-    for rf in runfiles:
-        proc.f.write(f"bash {rf} \n")
+    for rf in steps:
+        proc.f.write(f'bash {rf} \n')
     proc.f.close()
 
 
-
-    ################## BW-analysis ####################### Testing, need re-factor
-    proc.create_run_file('run_x_bwAnalysis')
-
-    proc.write_bwAnalysis(bw, ts_icams, clpdir=clpdir, veldir=veldir)
-    proc.f.write("echo 'Normal finish the short BW analysis'\n")
-    proc.f.close()
-
-
-#############################################################################################################
 #############################################################################################################
 
 if __name__ == '__main__':
-
-    # get user inputs
     inps = cmdLineParse()
-
-    # initialize the process
+    if inps.check_dates:
+        check_dates(*inps.check_dates)
+        sys.exit(0)
     proc = SBApp(inps.param_file, inps.proc_home)
-
-    # run it
     if inps.action == 'all':
         main(proc, inps)
     elif inps.action == 'dem_resamp':
-        proc.f = open('run_0_prep', 'a+') # append after the runfile
+        proc.get_template()
         proc.run_resamp_dem(inps.dem_out, inps.geo_in, inps.dem_orig, inps.dem_action)
-        proc.f.close()
-
     print('Finish writing the run files. Go ahead and run them sequentially.')
